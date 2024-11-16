@@ -60,7 +60,6 @@ class LSTM:
         return self.model.predict(x_val)
 
     def read_data(self):
-        directory = os.path.join("model_data", self.name)
         # read then label
         proper_data = self.directory_to_numpy(os.path.join(self.data_path, "Proper"))
         improper_data = self.directory_to_numpy(os.path.join(self.data_path, "Improper"))
@@ -80,7 +79,7 @@ class LSTM:
         if len(csv_files) == 0: return np.empty((0, 0, 0))
         data = []
         # Process each .csv file
-        for idx,file in enumerate(csv_files):
+        for file in csv_files:
             processsed_video_data:pd.DataFrame = self.process_data(file)
             if processsed_video_data.empty:
                 print(f"No valid data in CSV file: {file}")
@@ -92,23 +91,6 @@ class LSTM:
         print(data.shape)
         assert len(data.shape) == 3, f"Incorrect data shape when reading from directory: ${directory}. Data needs to be 3D but is currently of shape: ${data.shape}"
         return data
-    
-    # def read_improper_data(self,directory):
-    #     # Find all .csv files in the directory
-    #     csv_files = list_files_in_directory(directory_path=directory)
-    #     if len(csv_files) == 0: return np.empty((0, 0, 0))
-    #     data = []
-    #     # Process each .csv file
-    #     for file in csv_files:
-    #         processsed_video_data:pd.DataFrame = self.process_data(file)
-    #         if processsed_video_data.empty:
-    #             print(f"No valid data in CSV file: {file}")
-    #             continue
-    #         data.append(processsed_video_data.to_numpy())
-
-    #     data = np.array(data)
-    #     assert len(data.shape) == 3, f"Improper data shape when reading from directory: ${directory}. Data needs to be 3 dimensional but is currently of shape: ${data.shape}"
-    #     return data
     
     def process_data(self,video_file:str)->pd.DataFrame:
         # video_file is a path to a csv file
