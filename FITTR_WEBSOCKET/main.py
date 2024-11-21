@@ -42,4 +42,7 @@ async def start_server():
     async with serve(handle_client, "", 8001):
         await asyncio.get_running_loop().create_future()  # run forever
 
+async def hello_world_main():
+    return "Hello, world!"
+
 asyncio.run(start_server())
