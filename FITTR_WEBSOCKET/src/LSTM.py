@@ -57,9 +57,10 @@ class LSTM:
 
     def predict(self,x_val):
         assert len(x_val.shape) == 3, f"Prediction input for the model {type(self.model)} must be a 3D array "
-        return self.model.predict(x_val)
+        loaded_model = self.model.load_weights(os.path.join("models","LSTM_Squats.h5"))
+        return loaded_model.predict(x_val)
 
-    def read_data(self):
+    def read_data(self)->tuple:
         # read then label
         proper_data = self.directory_to_numpy(os.path.join(self.data_path, "Proper"))
         improper_data = self.directory_to_numpy(os.path.join(self.data_path, "Improper"))
@@ -73,7 +74,7 @@ class LSTM:
         assert combined_data.shape[2] == 33*3, f"Number of features is not 99 but is instead {combined_data.shape[1]}"
         return combined_data, combined_labels
 
-    def directory_to_numpy(self,directory):
+    def directory_to_numpy(self,directory:str)->np.array:
         # Find all .csv files in the directory
         csv_files = list_files_in_directory(directory_path=directory)
         if len(csv_files) == 0: return np.empty((0, 0, 0))
@@ -88,7 +89,6 @@ class LSTM:
             data.append(processsed_video_data.to_numpy())
 
         data = np.array(data)
-        print(data.shape)
         assert len(data.shape) == 3, f"Incorrect data shape when reading from directory: ${directory}. Data needs to be 3D but is currently of shape: ${data.shape}"
         return data
     

@@ -1,10 +1,10 @@
-from utils import Exercise
+from FITTR_WEBSOCKET.src.utils import ExerciseSession
 from typing import overload
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-class SquatNN(Exercise):
+class SquatNN(ExerciseSession):
     def __init__(self,classes,video_sequence):
         super().__init__()
         self.num_classes = len(classes)
