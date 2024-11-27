@@ -54,8 +54,9 @@ def process_raw_record(landmarks:pd.Series)->pd.Series:
         for i, label in enumerate(landmark_labels[:len(landmarks)])
     }
     raw_record = pd.Series(landmark_dict)
-    s_record = spread_record(raw_record)
-    return s_record
+    return raw_record
+    #s_record = spread_record(raw_record)
+    #return s_record
     
 
 def spread_record(record:pd.Series) -> pd.Series:
@@ -102,6 +103,79 @@ def smooth_gaussian(data:pd.Series, sigma=10)->pd.Series:
     
     return pd.Series(smoothed_data,index=data.index)
 
+def calculate_angle(joint_a, joint_b, joint_c):
+    """
+    Calculate the angle between three joints in 3D space using numpy.
+    
+    Args:
+    joint_a (tuple): The (x, y, z) coordinates of the first joint.
+    joint_b (tuple): The (x, y, z) coordinates of the second joint (vertex joint).
+    joint_c (tuple): The (x, y, z) coordinates of the third joint.
+    
+    Returns:
+    float: The angle in degrees between the three joints.
+    """
+    # Convert joint coordinates to numpy arrays
+    joint_a = np.array(joint_a)
+    joint_b = np.array(joint_b)
+    joint_c = np.array(joint_c)
+    
+    # Calculate vectors: Joint A to B and Joint B to C
+    vector_ab = joint_b - joint_a
+    vector_bc = joint_c - joint_b
+    
+    # Calculate dot product and magnitudes using numpy
+    dot_product = np.dot(vector_ab, vector_bc)
+    magnitude_ab = np.linalg.norm(vector_ab)
+    magnitude_bc = np.linalg.norm(vector_bc)
+    
+    # Avoid division by zero by ensuring valid magnitude values
+    if magnitude_ab == 0 or magnitude_bc == 0:
+        raise ValueError("One of the vectors has zero length, can't calculate angle.")
+    
+    # Calculate the cosine of the angle
+    cos_theta = dot_product / (magnitude_ab * magnitude_bc)
+    
+    # Ensure cos_theta is within [-1, 1] to avoid domain errors
+    cos_theta = np.clip(cos_theta, -1.0, 1.0)
+    
+    # Calculate the angle in radians, then convert to degrees
+    angle_rad = np.arccos(cos_theta)
+    angle_deg = np.degrees(angle_rad)
+    
+    return angle_deg
+
+def joint_angles_per_record(record, joints):
+    """
+    Calculate the joint angle for a single record (pd.Series).
+    
+    Args:
+    record (pd.Series): A single row from a DataFrame containing joint positions.
+    joints (list): List of three joint names as strings (column names).
+    
+    Returns:
+    float: The calculated angle for the given joints in the record.
+    """
+    joint_a, joint_b, joint_c = joints
+
+    # Extract joint coordinates directly from the record
+    a_coords = record[joint_a]
+    b_coords = record[joint_b]
+    c_coords = record[joint_c]
+
+    if isinstance(a_coords, (list, tuple)):
+        pass  # already in (x, y, z) format
+    else:
+        a_coords = tuple(a_coords)
+        b_coords = tuple(b_coords)
+        c_coords = tuple(c_coords)
+
+    # Calculate the angle between the joints
+    angle = calculate_angle(a_coords, b_coords, c_coords)
+    
+    return angle
+
+
 def exercise_to_algo_map(exercise_type:str)->Callable:
     if exercise_type == ExerciseType.SQUATS:
         return squat_reps
@@ -111,9 +185,15 @@ def exercise_to_algo_map(exercise_type:str)->Callable:
 def squat_reps(current_record:pd.Series,past_record:pd.Series | None)->int:
     if past_record is None or past_record.empty: return 0
     thr = ExerciseType.SQUATS_THRESHOLD
-    if "RIGHT_KNEE_z" not in current_record.index:
+    # if "RIGHT_KNEE_z" not in current_record.index:
+    #      return 0
+    # if current_record["RIGHT_KNEE_z"] <= thr and past_record["RIGHT_KNEE_z"] > thr:
+    #     return 1
+    # else:
+    #     return 0
+    if "LEFT_ANGLE" not in current_record.index:
          return 0
-    if current_record["RIGHT_KNEE_z"] <= thr and past_record["RIGHT_KNEE_z"] > thr:
+    if current_record["LEFT_ANGLE"] >= 120 and past_record["LEFT_ANGLE"] < 120:
         return 1
     else:
         return 0
@@ -128,11 +208,18 @@ def get_relevant_squat_joints(record: pd.Series) -> pd.Series:
     """
     Drops data that isn't relevent for Squats.
     """
+    # prefixes_to_drop = [
+    #     'NOSE', 'LEFT_EYE', 'RIGHT_EYE', 'LEFT_EAR', 'RIGHT_EAR',
+    #     'MOUTH', 'LEFT_SHOULDER', 'RIGHT_SHOULDER', 'LEFT_ELBOW', 'RIGHT_ELBOW',
+    #     'LEFT_WRIST', 'RIGHT_WRIST', 'LEFT_PINKY', 'RIGHT_PINKY', 'LEFT_INDEX',
+    #     'RIGHT_INDEX', 'LEFT_THUMB', 'RIGHT_THUMB', 'LEFT_ANKLE', 'RIGHT_ANKLE',
+    #     'LEFT_HEEL', 'RIGHT_HEEL', 'LEFT_FOOT_INDEX', 'RIGHT_FOOT_INDEX'
+    # ]
     prefixes_to_drop = [
         'NOSE', 'LEFT_EYE', 'RIGHT_EYE', 'LEFT_EAR', 'RIGHT_EAR',
-        'MOUTH', 'LEFT_SHOULDER', 'RIGHT_SHOULDER', 'LEFT_ELBOW', 'RIGHT_ELBOW',
+        'MOUTH', 'LEFT_ELBOW', 'RIGHT_ELBOW',
         'LEFT_WRIST', 'RIGHT_WRIST', 'LEFT_PINKY', 'RIGHT_PINKY', 'LEFT_INDEX',
-        'RIGHT_INDEX', 'LEFT_THUMB', 'RIGHT_THUMB', 'LEFT_ANKLE', 'RIGHT_ANKLE',
+        'RIGHT_INDEX', 'LEFT_THUMB', 'RIGHT_THUMB',
         'LEFT_HEEL', 'RIGHT_HEEL', 'LEFT_FOOT_INDEX', 'RIGHT_FOOT_INDEX'
     ]
     

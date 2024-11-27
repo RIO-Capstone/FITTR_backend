@@ -1,7 +1,7 @@
 import json
 import pandas as pd
 from channels.generic.websocket import AsyncWebsocketConsumer
-from FITTR_API.live_stream_util import exercise_to_algo_map, exercise_to_filter_map, process_raw_record, smooth_gaussian
+from FITTR_API.live_stream_util import *
 from FITTR_API.ExerciseType import ExerciseType
 
 class ExerciseSessionConsumer(AsyncWebsocketConsumer):
@@ -47,16 +47,24 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
         if not landmark_data.empty:
             landmark_data = landmark_data[0]
             current_record = self.filter_function(process_raw_record(landmark_data))
-
-            if not calibration_check:
-                self.update_calibrated_data(current_record)
-                #await self.send(json.dumps({"message": "Calibrating..."}))
-            else:
-                #print("Exercise session beginning")
-                scaled_record = self.min_max_scaler(current_record)
-                smooth_record = smooth_gaussian(scaled_record)
-                self.add_exercise_point(smooth_record)
-                await self.send(json.dumps({"rep_count": self.rep_count}))
+            if self.exercise_type == ExerciseType.SQUATS:
+                left_knee_angle_joints = ("LEFT_HIP", "LEFT_KNEE", "LEFT_ANKLE")
+                right_knee_angle_joints = ("RIGHT_HIP", "RIGHT_KNEE", "RIGHT_ANKLE")
+                angle_left_knee = joint_angles_per_record(current_record,left_knee_angle_joints)
+                angle_right_knee = joint_angles_per_record(current_record,right_knee_angle_joints)
+                angle_record = pd.Series([angle_left_knee,angle_right_knee],index=["LEFT_ANGLE","RIGHT_ANGLE"])
+                smoothed_angles = smooth_gaussian(angle_record)
+                self.add_exercise_point(smoothed_angles)
+            # if not calibration_check:
+            #     self.update_calibrated_data(current_record)
+            #     #await self.send(json.dumps({"message": "Calibrating..."}))
+            # else:
+            #     #print("Exercise session beginning")
+            #     # scaled_record = self.min_max_scaler(current_record)
+            #     # smooth_record = smooth_gaussian(scaled_record)
+            #     self.add_exercise_point(smooth_record)
+            
+            await self.send(json.dumps({"rep_count": self.rep_count}))
 
     def end_calibration(self):
         print("Ended Calibration")
