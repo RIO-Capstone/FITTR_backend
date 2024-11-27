@@ -8,9 +8,9 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)).rsplit("src", 1)[0])
 from src.utils.live_stream_util import exercise_to_algo_map, exercise_to_filter_map, process_raw_record, smooth_gaussian
 from websockets.server import serve
+from channels.generic.websocket import AsyncWebsocketConsumer
 
-
-class ExerciseSession:
+class ExerciseSession(AsyncWebsocketConsumer):
     def __init__(self, exercise_type: str, host_address: str = "", socket_port: int = 8001) -> None:
         # exercise properties
         self.calibration_min = {}

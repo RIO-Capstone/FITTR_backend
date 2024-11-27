@@ -1,0 +1,2 @@
+Command to run django server: daphne -b 0.0.0.0 -p 8000 FITTR_API.asgi:application
+User must be in the same directory as the manage.py file.

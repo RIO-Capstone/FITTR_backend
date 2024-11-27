@@ -25,7 +25,7 @@ SECRET_KEY = "django-insecure-7bea#$rg$i5fxlnzr&#1y^=7=p&l%z%*3vnct6*c260)z89!du
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['192.168.0.170']
 
 
 # Application definition
@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'channels'
 ]
 
 MIDDLEWARE = [
@@ -68,7 +69,13 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "FITTR_API.wsgi.application"
-
+# Asynchronous Server Gateway Interface (ASGI), allows Django to handle web socket connections
+ASGI_APPLICATION = "FITTR_API.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
