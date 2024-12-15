@@ -80,8 +80,45 @@ def spread_record(record:pd.Series) -> pd.Series:
 
 def min_max_scaler(col:pd.Series,min_value,max_value)->pd.Series:
         return col.map(lambda x: (x-min_value)/(max_value-min_value))
+import numpy as np
+import pandas as pd
+
+def smooth_gaussian_live(record: pd.Series, window_data: pd.DataFrame, sigma: float = 2, window_size: int = 30) -> pd.Series:
+    """
+    Apply Gaussian smoothing to a live stream without affecting past smoothed values.
+
+    Parameters:
+    - record: pd.Series, the current live data point.
+    - window_data: pd.DataFrame, past raw data points (not smoothed).
+    - sigma: float, standard deviation of the Gaussian kernel.
+    - window_size: int, size of the smoothing window.
+
+    Returns:
+    - pd.Series: Smoothed version of the current record.
+    """
+    # Append current record to the window data
+    window_data = pd.concat([window_data, record.to_frame().T], axis=0)
     
-def smooth_gaussian(data:pd.Series, sigma=10)->pd.Series:
+    # Ensure window size limit
+    window_data = window_data.iloc[-window_size:]
+    
+    # Apply Gaussian kernel
+    kernel_radius = int(3 * sigma)
+    x = np.arange(-kernel_radius, kernel_radius + 1)
+    gaussian_kernel = np.exp(-x**2 / (2 * sigma**2))
+    gaussian_kernel /= gaussian_kernel.sum()  # Normalize kernel
+
+    # Apply Gaussian smoothing on each column separately
+    smoothed_values = {}
+    for column in window_data.columns:
+        padded_column = np.pad(window_data[column].values, (kernel_radius, 0), mode='constant')
+        convolved_column = np.convolve(padded_column, gaussian_kernel, mode='valid')
+        smoothed_values[column] = convolved_column[-1]  # Take the latest smoothed value
+
+    # Return as a Series with the same index as the current record
+    return pd.Series(smoothed_values, index=record.index)
+
+def smooth_gaussian(data:pd.Series, sigma=2)->pd.Series:
     """
     Smoothen the curves using a Gaussian filter.
     Parameters:
@@ -193,7 +230,7 @@ def squat_reps(current_record:pd.Series,past_record:pd.Series | None)->int:
     #     return 0
     if "LEFT_ANGLE" not in current_record.index:
          return 0
-    if current_record["LEFT_ANGLE"] >= 120 and past_record["LEFT_ANGLE"] < 120:
+    if current_record["LEFT_ANGLE"] >= 155 and past_record["LEFT_ANGLE"] < 155:
         return 1
     else:
         return 0

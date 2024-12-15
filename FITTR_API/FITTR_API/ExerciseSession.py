@@ -12,6 +12,7 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
         self.exercise_data = pd.DataFrame()
         self.rep_count = 0
         self.is_calibrated = False
+        self.testing_df = pd.DataFrame()
 
     async def connect(self):
         """
@@ -27,7 +28,7 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
         """
         Called when the WebSocket closes for any reason.
         """
-        self.exercise_data.to_csv("testing_file.csv",index=False)
+        self.testing_df.to_csv("testing_file.csv",index=False)
         print(f"WebSocket disconnected with code {close_code}")
 
     async def receive(self, text_data):
@@ -53,8 +54,13 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
                 angle_left_knee = joint_angles_per_record(current_record,left_knee_angle_joints)
                 angle_right_knee = joint_angles_per_record(current_record,right_knee_angle_joints)
                 angle_record = pd.Series([angle_left_knee,angle_right_knee],index=["LEFT_ANGLE","RIGHT_ANGLE"])
-                smoothed_angles = smooth_gaussian(angle_record)
-                self.add_exercise_point(smoothed_angles)
+                #smoothed_angles = smooth_gaussian_live(angle_record,self.exercise_data)
+                #self.testing_df = pd.concat([self.testing_df,smoothed_angles.to_frame().T],axis=0)
+
+                #if not self.exercise_data.empty:
+                    #past_record = self.exercise_data.iloc[-1]
+                    #self.rep_count += self.rep_function(smoothed_angles,past_record)
+                self.add_exercise_point(angle_record)
             # if not calibration_check:
             #     self.update_calibrated_data(current_record)
             #     #await self.send(json.dumps({"message": "Calibrating..."}))
