@@ -7,8 +7,7 @@ class Product(models.Model):
 class User(models.Model):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
-    age = models.SmallIntegerField()
-    email = models.EmailField()
+    email = models.EmailField(unique=True)
     password = models.CharField(max_length=50)
     weight = models.SmallIntegerField()
     height = models.SmallIntegerField()
