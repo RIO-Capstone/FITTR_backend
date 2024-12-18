@@ -3,6 +3,7 @@ from django.db import models
 
 class Product(models.Model):
     version = models.CharField(max_length=10)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 class User(models.Model):
     first_name = models.CharField(max_length=50)
@@ -17,5 +18,24 @@ class User(models.Model):
     product_id = models.ForeignKey(Product,
                                    to_field='id',
                                    on_delete=models.CASCADE) # Deletes the user if the related product is deleted
+    created_at = models.DateTimeField(auto_now_add=True)
     class Meta:
         app_label = 'FITTR_API'
+
+
+class ExerciseSession(models.Model):
+    product_id = models.ForeignKey(
+        Product,
+        to_field='id',
+        on_delete=models.DO_NOTHING,  # Do nothing to Product when ExerciseSession is deleted
+    )
+    user_id = models.ForeignKey(
+        User,
+        to_field='id',
+        on_delete=models.DO_NOTHING,  # Do nothing to User when ExerciseSession is deleted
+    )
+    exercise_type = models.CharField(max_length=20)
+    duration = models.PositiveSmallIntegerField()
+    reps = models.PositiveSmallIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    errors = models.PositiveSmallIntegerField()

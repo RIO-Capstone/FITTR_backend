@@ -75,7 +75,10 @@ def register_user(request):
         try:
             product = Product.objects.get(id=data["product_id"])
         except Product.DoesNotExist:
-            return JsonResponse({"eror": f"Product with given ID {data['product_id']} does not exist."}, status=400)
+            return JsonResponse({"error": f"Product with given ID {data['product_id']} does not exist."}, status=400)
+
+        if User.objects.filter(email=data['email']).exists():
+            return JsonResponse({"error": f"User with email {data['email']} already exists."}, status=400)
         
         # Create user with hashed password
         user = User.objects.create(
@@ -120,16 +123,12 @@ def get_user(request, id):
         user_obj = User.objects.get(id=id)
         
         user_data = {
-            "id": user_obj.id,
+            "user_id": user_obj.id,
             "first_name": user_obj.first_name,
             "last_name": user_obj.last_name,
             "email": user_obj.email,
             "weight": user_obj.weight,
             "height": user_obj.height,
-            "phone_number": user_obj.phone_number,
-            "gender": user_obj.gender,
-            "date_of_birth": user_obj.date_of_birth.strftime("%d-%m-%Y"),
-            "product_id": user_obj.product_id.id,
         }
         
         return JsonResponse({"user": user_data}, status=200)
