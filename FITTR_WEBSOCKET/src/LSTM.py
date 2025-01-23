@@ -16,7 +16,7 @@ https://www.kaggle.com/code/szaitseff/classification-of-time-series-with-lstm-rn
 """
 
 class LSTM:
-    def __init__(self,name:str, video_sequence, class_mapping: dict,data_path:str) -> None:
+    def __init__(self,name:str, video_sequence, class_mapping: dict,data_path:str,batch_size:int) -> None:
         """
         video_sequence = ideal number of frames
         Since LSTM models can't predict on a varrying number of frames per video, padding needs to be added
@@ -29,26 +29,39 @@ class LSTM:
         
         self.model = tf.keras.models.Sequential()
         # mask_value same as the padding in process data
-        self.model.add(tf.keras.layers.Masking(mask_value=-1.0, input_shape=self.input_shape))
+        self.model.add(tf.keras.layers.Masking(mask_value=-1.0, batch_input_shape=(batch_size,self.video_sequence_limit,33*3)))
 
-        self.model.add(tf.keras.layers.LSTM(units=128, activation='relu', return_sequences=True, input_shape=self.input_shape))
-        self.model.add(tf.keras.layers.LSTM(units=256, activation='relu', return_sequences=True))
-        self.model.add(tf.keras.layers.LSTM(units=128, activation='relu', return_sequences=False))
-        #self.model.add(tf.keras.layers.BatchNormalization())
+        self.model.add(tf.keras.layers.LSTM(units=128, activation='relu', return_sequences=True, input_shape=self.input_shape,stateful=True))
+        self.model.add(tf.keras.layers.LSTM(units=256, activation='relu', return_sequences=True,stateful=True))
+        self.model.add(tf.keras.layers.LSTM(units=128, activation='relu', return_sequences=False,stateful=True))
+        self.model.add(tf.keras.layers.BatchNormalization())
         self.model.add(tf.keras.layers.Dense(units=128, activation='relu'))
         self.model.add(tf.keras.layers.Dense(units=64, activation='relu'))
         self.model.add(tf.keras.layers.Dense(units=self.num_classes, activation='softmax')) # output a probability vector of length num_classes
-        # Compile the model
-        self.model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+        # Compile the model, Adam clipnorm helps with gradient exploding
+        self.model.compile(optimizer=tf.keras.optimizers.Adam(clipnorm=1.0), loss='categorical_crossentropy', metrics=['accuracy'])
 
 
-    def train(self):
+    def train(self,epochs=10):
         X,y = self.read_data()
+        assert not np.isnan(X).any(), "Input data X contains NaN values!"
+        assert not np.isinf(X).any(), "Input data X contains infinite values!"
+        assert not np.isnan(y).any(), "Labels y contain NaN values!"
+        assert not np.isinf(y).any(), "Labels y contain infinite values!"
+
+        assert len(X.shape) == 3, "X must have a 3D shape of (batch_size,video_sequence_limit,features)"
         hot_encoder = tf.keras.utils.to_categorical
         y_one_hot_encoded = hot_encoder(y, num_classes=self.num_classes)
-        #pad_sequences = tf.keras.preprocessing.sequence.pad_sequences
-        #padded_data = pad_sequences(X, padding='post', dtype='float32',value=-1.0)
-        self.model.fit(X,y_one_hot_encoded)
+        dataset = tf.data.Dataset.from_tensor_slices((X, y_one_hot_encoded))
+        dataset = dataset.batch(1, drop_remainder=True)
+        for epoch in range(epochs):
+            print(f"Epoch {epoch + 1}/{epochs}")
+
+            # Reset states at the start of each epoch
+            self.model.reset_states()
+
+            # Train for one epoch
+            self.model.fit(dataset, epochs=1, verbose=1)
         save_directory = os.path.join("models","LSTM_Squats.h5")
         self.model.save(save_directory)
 
@@ -116,4 +129,6 @@ class LSTM:
             padding = np.full((self.video_sequence_limit - current_length, coordinates_df.shape[1]), -1.0)
             coordinates_df = pd.DataFrame(np.vstack([coordinates_df.values, padding]), columns=coordinates_df.columns)
         # cap the amount of video being used by the video_sequence_limit
+        assert coordinates_df.shape[0] >= self.video_sequence_limit, f"Batch shape compromised expected: {self.video_sequence_limit}, received {coordinates_df.shape[0]}"
+        assert coordinates_df.shape[1] == 33*3, f"Incorrect number of features expected: {33*3}, received: {coordinates_df.shape[1]}"
         return coordinates_df.iloc[:self.video_sequence_limit]
