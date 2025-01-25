@@ -1,8 +1,13 @@
 import pandas as pd
 class ExerciseType:
-    SQUATS = "SQUAT"
+    SQUATS = "SQUATS"
     
-    SQUATS_THRESHOLD = 0.55 # when a person's left/right knee goes below this threshold a rep is done
+    SQUATS_THRESHOLD = 155 # angular threshold
     
-    
-    BICEP_CURLS = "BICEP_CURLS"
+    LEFT_BICEP_CURLS = "LEFT_BICEP_CURLS"
+
+    LEFT_BICEP_CURLS_THRESHOLD = 0.5 # scaled coordinate threshold
+
+    RIGHT_BICEP_CURLS = "RIGHT_BICEP_CURLS"
+
+    RIGHT_BICEP_CURLS_THRESHOLD = 0.5 # scaled coordinate threshold

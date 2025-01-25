@@ -15,6 +15,7 @@ def register_exercise(request):
             if field not in data:
                 return JsonResponse({"error": f"{field} is required."}, status=400) 
         # TODO: Complete implementation
+        # Side Note: Do we need this functionality? I'm thinking aren't exercises going to be added directly into a database?
         return JsonResponse({
             
         }, status=200)

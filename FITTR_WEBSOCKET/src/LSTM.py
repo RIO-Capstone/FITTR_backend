@@ -56,12 +56,12 @@ class LSTM:
         dataset = dataset.batch(1, drop_remainder=True)
         for epoch in range(epochs):
             print(f"Epoch {epoch + 1}/{epochs}")
-
-            # Reset states at the start of each epoch
+            # Train for one epoch, ensuring batch_size = 1 and shuffle = False
+            # this ensures that predictions are done with one batch_size and data is processed sequentially
+            self.model.fit(dataset, epochs=1, verbose=1,batch_size=1,shuffle=False)
+            # Reset states at the end of each epoch
             self.model.reset_states()
 
-            # Train for one epoch
-            self.model.fit(dataset, epochs=1, verbose=1)
         save_directory = os.path.join("models","LSTM_Squats.h5")
         self.model.save(save_directory)
 
