@@ -37,7 +37,7 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
         """
         data = json.loads(text_data)
         pose_landmarks = data['results'].get("results", None)
-        calibration_check = data.get("is_calibrated",False)
+        #calibration_check = data.get("is_calibrated",False)
         #if calibration_check: self.end_calibration()
         if not pose_landmarks:
             await self.send(json.dumps({"error": "Neither inference time nor pose_landmarks received: {}!".format(text_data)}))
@@ -47,7 +47,8 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
         landmark_data = pd.Series(pose_landmarks[0]["landmarks"])  # Assuming data structure matches
         if not landmark_data.empty:
             landmark_data = landmark_data[0]
-            current_record = self.filter_function(process_raw_record(landmark_data))
+            # filter out all the columns that are not required for this particular exercise
+            current_record:pd.Series = self.filter_function(process_raw_record(landmark_data))
             if self.exercise_type == ExerciseType.SQUATS:
                 left_knee_angle_joints = ("LEFT_HIP", "LEFT_KNEE", "LEFT_ANKLE")
                 right_knee_angle_joints = ("RIGHT_HIP", "RIGHT_KNEE", "RIGHT_ANKLE")
@@ -61,6 +62,15 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
                     #past_record = self.exercise_data.iloc[-1]
                     #self.rep_count += self.rep_function(smoothed_angles,past_record)
                 self.add_exercise_point(angle_record)
+            elif self.exercise_type == ExerciseType.LEFT_BICEP_CURLS:
+                """
+                Use wrist/index finger y (index 1) scalar coordinate for measuring reps
+                """
+                left_index = pd.Series(current_record["LEFT_INDEX"][1],index=["LEFT_INDEX"])
+                self.add_exercise_point(left_index)
+            elif self.exercise_data == ExerciseType.RIGHT_BICEP_CURLS:
+                right_index = pd.Series(current_record["RIGHT_INDEX"][1],index=["RIGHT_INDEX"])
+                self.add_exercise_point(right_index)
             # if not calibration_check:
             #     self.update_calibrated_data(current_record)
             #     #await self.send(json.dumps({"message": "Calibrating..."}))

@@ -61,7 +61,10 @@ def write_landmarks_to_csv(landmarks,data,verbose):
         data[body_part].append(current_coordinates)
 
 def extract_data_from_video(video_path:str,verbose=False):
-    PostEstimator = mp_pose.Pose(static_image_mode=False, min_detection_confidence=0.5, min_tracking_confidence=0.5)
+    PostEstimator = mp_pose.Pose(static_image_mode=False, min_detection_confidence=0.6, min_tracking_confidence=0.6)
+    if not os.path.exists(video_path):
+        print("The video path given does not exist!")
+        return
     print(f"Extracting data from video file: {video_path}")
     video = cv.VideoCapture(video_path)
     if not video.isOpened():

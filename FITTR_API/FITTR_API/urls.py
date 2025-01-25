@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from django.http import JsonResponse
-from .db_utils.user_utils import register_user, get_all_users
+from .db_utils.user_utils import register_user, get_all_users, get_user, login_user, get_user_history
 from .db_utils.product_utils import register_product, get_all_products
 
 # Testing the API
@@ -14,8 +14,10 @@ def hello_world(request):
 # firebase_admin.initialize_app(cred)
 user_paths = [
     path('user/register',register_user),
-    path('users',get_all_users)
-    #path('user/login')
+    path('users',get_all_users),
+    path('user/<int:id>', get_user),
+    path('user/login',login_user),
+    path('user/<int:id>/history',get_user_history)
 ]
 
 product_paths = [
