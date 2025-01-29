@@ -4,6 +4,10 @@ from django.db import models
 class Product(models.Model):
     version = models.CharField(max_length=10)
     created_at = models.DateTimeField(auto_now_add=True)
+    resistance_characteristic_uuid = models.CharField(max_length=50,default="87654321-4321-4321-4321-abcdef987654")
+    stop_characteristic_uuid = models.CharField(max_length=50,default="87654321-4321-4321-4321-abcdef987654")
+    service_uuid = models.CharField(max_length=50,default="12345678-1234-1234-1234-123456789abc")
+
 
 class User(models.Model):
     first_name = models.CharField(max_length=50)

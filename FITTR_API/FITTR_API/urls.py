@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path
 from django.http import JsonResponse
 from .db_utils.user_utils import register_user, get_all_users, get_user, login_user, get_user_history
-from .db_utils.product_utils import register_product, get_all_products
+from .db_utils.product_utils import register_product, get_all_products, get_product
 
 # Testing the API
 def hello_world(request):
@@ -22,18 +22,15 @@ user_paths = [
 
 product_paths = [
     path('product/register',register_product),
-    path('products',get_all_products)
+    path('products',get_all_products),
+    path('product/<int:id>',get_product)
 ]
 
 # URL patterns
 urlpatterns = [
     path('api/hello/', hello_world),
     path('admin',admin.site.urls),
-    #path('exercise/start/',) # TODO: Add a handling function
     *user_paths,
     *product_paths
-    #path('api/end_exercise'),
-    #path('api/end_calibration') #TODO: Add a handling function
+    #path('api/end_exercise'), TODO: ExerciseSession data needs to be stored to be used later
 ]
-# How do i run a singleton ExerciseSession class and handle real time feedback as well as HTTP requests from the user when 
-# the state of the session changes?

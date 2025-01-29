@@ -38,3 +38,21 @@ def get_all_products(request):
     except Exception as e:
         print(e)
         return JsonResponse({"error": "Server Error", "message": str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def get_product(request,id):
+    try:
+        # Fetch the product object from the database
+        productObj = Product.objects.get(id=id)
+        uuids = {
+            "serviceUUID":productObj.service_uuid,
+            "resistanceUUID":productObj.resistance_characteristic_uuid,
+            "stopUUID":productObj.stop_characteristic_uuid
+        }
+        return JsonResponse(uuids,status=200)
+    except Product.DoesNotExist:
+        return JsonResponse({"error":"Product does not exist in the database"}, status=401)
+    except Exception as e:
+        print(e)
+        return JsonResponse({"error":"Server Error","message":str(e)}, status=500)
