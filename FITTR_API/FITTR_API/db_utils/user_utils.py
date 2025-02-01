@@ -31,7 +31,8 @@ def login_user(request):
                 "last_name": user.last_name,
                 "weight": user.weight,
                 "height":user.height,
-                "email":user.email
+                "email":user.email,
+                "product_id":user.product_id.id
             }
         }, status=200)
     
@@ -40,6 +41,7 @@ def login_user(request):
     except User.DoesNotExist:
             return JsonResponse({"error": "Invalid credentials. User not found."}, status=401)
     except Exception as e:
+        print(e)
         return JsonResponse({"error": "Login Failed", "message": str(e)}, status=500)
 
 
@@ -131,6 +133,7 @@ def get_user(request, id):
             "email": user_obj.email,
             "weight": user_obj.weight,
             "height": user_obj.height,
+            "product_id":user_obj.product_id.id
         }
         
         return JsonResponse({"user": user_data}, status=200)

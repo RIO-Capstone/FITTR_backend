@@ -46,9 +46,9 @@ def get_product(request,id):
         # Fetch the product object from the database
         productObj = Product.objects.get(id=id)
         uuids = {
-            "serviceUUID":productObj.service_uuid,
-            "resistanceUUID":productObj.resistance_characteristic_uuid,
-            "stopUUID":productObj.stop_characteristic_uuid
+            "service_uuid":productObj.service_uuid,
+            "resistance_uuid":productObj.resistance_characteristic_uuid,
+            "stop_uuid":productObj.stop_characteristic_uuid
         }
         return JsonResponse(uuids,status=200)
     except Product.DoesNotExist:
