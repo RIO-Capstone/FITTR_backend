@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from django.http import JsonResponse
-from .db_utils.user_utils import register_user, get_all_users, get_user, login_user, get_user_history
+from .db_utils.user_utils import register_user, get_all_users, get_user, login_user, get_user_history, get_ai_user_feedback
 from .db_utils.product_utils import register_product, get_all_products, get_product
 
 # Testing the API
@@ -17,7 +17,8 @@ user_paths = [
     path('users',get_all_users),
     path('user/<int:id>', get_user),
     path('user/login',login_user),
-    path('user/<int:id>/history',get_user_history)
+    path('user/<int:id>/history',get_user_history),
+    path('user/<int:id>/ai_reply',get_ai_user_feedback)
 ]
 
 product_paths = [
