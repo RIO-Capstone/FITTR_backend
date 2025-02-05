@@ -5,6 +5,7 @@ from FITTR_API.live_stream_util import *
 from FITTR_API.ExerciseType import ExerciseType
 from FITTR_API.models import ExerciseSession, User, Product
 from asgiref.sync import sync_to_async
+from django.utils import timezone
 
 class ExerciseSessionConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
@@ -15,6 +16,8 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
         self.rep_count = 0
         self.is_calibrated = False
         self.testing_df = pd.DataFrame()
+        self.start_time = None
+        self.duration = 0
 
     async def connect(self):
         """
@@ -27,6 +30,7 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
         
         self.rep_function = exercise_to_algo_map(exercise_type=self.exercise_type)
         self.filter_function = exercise_to_filter_map(exercise_type=self.exercise_type)
+        self.start_time = timezone.now()
         print(f"WebSocket connected: With exercise type {self.exercise_type}. For user with id: {self.user_id} and product id: {self.product_id}")
 
     async def disconnect(self, close_code):
@@ -35,9 +39,13 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
         """
         try:
             self.testing_df.to_csv("testing_file.csv",index=False) # For visualisation purposes
-            user_instance = await self.get_user_instance()
-            product_instace = await self.get_product_instance()
-            await self.store_exercise_session(user=user_instance,product=product_instace)
+            self.duration = (timezone.now()-self.start_time).total_seconds()
+            if(self.duration > 5): # if the user clicks by mistake then its pointless to save the session
+                user_instance = await self.get_user_instance()
+                product_instace = await self.get_product_instance()
+                await self.store_exercise_session(user=user_instance,product=product_instace)
+            else:
+                print(f"Session duration was not long enough, only lasted for {self.duration} seconds")
             print(f"WebSocket disconnected with code {close_code}")
         except User.DoesNotExist:
             print(f"WebSocket connection error because user with id {self.user_id} does not exist")
@@ -136,7 +144,7 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
             user_id=user,
             product_id=product,
             exercise_type=self.exercise_type,
-            duration=1000,
+            duration=self.duration,
             reps=self.rep_count,
             errors=0
         )
