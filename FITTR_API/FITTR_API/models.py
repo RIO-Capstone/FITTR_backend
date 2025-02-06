@@ -39,7 +39,7 @@ class ExerciseSession(models.Model):
         on_delete=models.DO_NOTHING,  # Do nothing to User when ExerciseSession is deleted
     )
     exercise_type = models.CharField(max_length=20)
-    duration = models.PositiveSmallIntegerField()
+    duration = models.FloatField()
     reps = models.PositiveSmallIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
     errors = models.PositiveSmallIntegerField()
