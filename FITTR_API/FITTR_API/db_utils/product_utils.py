@@ -47,8 +47,10 @@ def get_product(request,id):
         productObj = Product.objects.get(id=id)
         uuids = {
             "service_uuid":productObj.service_uuid,
-            "resistance_uuid":productObj.resistance_characteristic_uuid,
-            "stop_uuid":productObj.stop_characteristic_uuid
+            "left_resistance_uuid":productObj.left_resistance_characteristic_uuid,
+            "right_resistance_uuid":productObj.right_resistance_characteristic_uuid,
+            "stop_uuid":productObj.stop_characteristic_uuid,
+            "exercise_initialize_uuid":productObj.exercise_initialize_uuid
         }
         return JsonResponse(uuids,status=200)
     except Product.DoesNotExist:

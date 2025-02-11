@@ -9,3 +9,7 @@ User must be in the same directory as the manage.py file.
 2. Command to initialize session: sqlite3  db.sqlite3
 3. Command to get a list of all the tables in the database: .tables
 4. SQL Query <SELECT * FROM FITTR_API_user;>
+<h5>Example edit query</h5>
+<UPDATE FITTR_API_product
+SET exercise_initialize_uuid = 'new_uuid_value'
+WHERE id = <product_id>;>
