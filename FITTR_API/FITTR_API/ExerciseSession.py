@@ -40,7 +40,7 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
         try:
             self.testing_df.to_csv("testing_file.csv",index=False) # For visualisation purposes
             self.duration = (timezone.now()-self.start_time).total_seconds()
-            if(self.duration > 5): # if the user clicks by mistake then its pointless to save the session
+            if(self.rep_count >= 1): # makes sense to save the session if at least a rep was performed
                 user_instance = await self.get_user_instance()
                 product_instace = await self.get_product_instance()
                 await self.store_exercise_session(user=user_instance,product=product_instace)
@@ -117,7 +117,7 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
             self.calibration_max[col] = max(filtered_record[col], cur_max)
             self.calibration_min[col] = min(filtered_record[col], cur_min)
 
-    def add_exercise_point(self, current_record):
+    def add_exercise_point(self, current_record:pd.Series):
         if self.exercise_data.empty:
             self.exercise_data = pd.DataFrame(columns=current_record.index)
 

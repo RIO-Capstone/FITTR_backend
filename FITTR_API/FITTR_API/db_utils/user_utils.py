@@ -45,7 +45,6 @@ def login_user(request):
         print(e)
         return JsonResponse({"error": "Login Failed", "message": str(e)}, status=500)
 
-
 @csrf_exempt # Cross-Site Request Forgery (CSRF)
 @require_http_methods(["POST"])
 def register_user(request):
@@ -203,7 +202,8 @@ def get_ai_user_feedback(request,id):
         if not all_sessions:
             return JsonResponse({"message":"Get some work in to get some feedback!"})
         # init AI Assistant Singleton class
-        assistant = SingletonAIAssistant.get_instance()
+        user_instance = User.objects.get(id=id)
+        assistant = SingletonAIAssistant.get_instance(user=user_instance)
         reply = assistant.reply(data=all_sessions)
         print("AI Reply: " + reply)
         return JsonResponse({"message":reply})
