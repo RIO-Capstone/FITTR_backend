@@ -26,7 +26,7 @@ class User(models.Model):
                                    to_field='id',
                                    on_delete=models.CASCADE) # Deletes the user if the related product is deleted
     created_at = models.DateTimeField(auto_now_add=True)
-    fitness_goal = models.CharField(max_length=20,default="undecided")
+    fitness_goal = models.CharField(max_length=30,default="undecided")
     def get_age(self):
         today = date.today()
         born = self.date_of_birth
@@ -38,6 +38,8 @@ class User(models.Model):
             return today.year - born.year - 1
         else:
             return today.year - born.year
+    def get_bmi(self):
+        return # TODO
     class Meta:
         app_label = 'FITTR_API'
 
