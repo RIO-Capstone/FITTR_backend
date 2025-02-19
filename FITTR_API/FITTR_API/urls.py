@@ -3,6 +3,7 @@ from django.urls import path
 from django.http import JsonResponse
 from .db_utils.user_utils import register_user, get_all_users, get_user, login_user, get_user_history, get_ai_user_feedback
 from .db_utils.product_utils import register_product, get_all_products, get_product
+from .ai_utils.ai_assistant import get_ai_feedback
 
 # Testing the API
 def hello_world(request):
@@ -29,6 +30,7 @@ product_paths = [
 
 # URL patterns
 urlpatterns = [
+    path('user/<int:user_id>/ai_feedback', get_ai_feedback),
     path('api/hello/', hello_world),
     path('admin',admin.site.urls),
     *user_paths,
