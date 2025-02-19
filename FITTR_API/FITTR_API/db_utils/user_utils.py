@@ -45,7 +45,6 @@ def login_user(request):
         print(e)
         return JsonResponse({"error": "Login Failed", "message": str(e)}, status=500)
 
-
 @csrf_exempt # Cross-Site Request Forgery (CSRF)
 @require_http_methods(["POST"])
 def register_user(request):
@@ -64,7 +63,8 @@ def register_user(request):
             "phone_number", 
             "gender", 
             "date_of_birth", 
-            "product_id"
+            "product_id",
+            "fitness_goal"
         ]
 
         for field in required_fields:
@@ -84,7 +84,6 @@ def register_user(request):
 
         if User.objects.filter(email=data['email']).exists():
             return JsonResponse({"error": f"User with email {data['email']} already exists."}, status=400)
-        
         # Create user with hashed password
         user = User.objects.create(
             first_name=data["first_name"],
@@ -97,6 +96,7 @@ def register_user(request):
             gender=data["gender"],
             date_of_birth=date_of_birth, 
             product_id=product, # Foreign Key
+            fitness_goal=data["fitness_goal"]
         )
         
         return JsonResponse({"message": "Registration successfull.", "user_id": user.id}, status=201)
@@ -203,7 +203,8 @@ def get_ai_user_feedback(request,id):
         if not all_sessions:
             return JsonResponse({"message":"Get some work in to get some feedback!"})
         # init AI Assistant Singleton class
-        assistant = SingletonAIAssistant.get_instance()
+        user_instance = User.objects.get(id=id)
+        assistant = SingletonAIAssistant.get_instance(user=user_instance)
         reply = assistant.reply(data=all_sessions)
         print("AI Reply: " + reply)
         return JsonResponse({"message":reply})

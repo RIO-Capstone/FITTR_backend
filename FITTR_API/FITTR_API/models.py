@@ -1,12 +1,15 @@
 from django.db import models
-
+from datetime import date
 
 class Product(models.Model):
     version = models.CharField(max_length=10)
     created_at = models.DateTimeField(auto_now_add=True)
-    resistance_characteristic_uuid = models.CharField(max_length=50,default="87654321-4321-4321-4321-abcdef987654")
+    left_resistance_characteristic_uuid = models.CharField(max_length=50,default="87654321-4321-4321-4321-abcdef987654")
+    right_resistance_characteristic_uuid = models.CharField(max_length=50,default="87654321-4321-4321-4321-abcdef987654")
     stop_characteristic_uuid = models.CharField(max_length=50,default="87654321-4321-4321-4321-abcdef987654")
     service_uuid = models.CharField(max_length=50,default="12345678-1234-1234-1234-123456789abc")
+    # starts or stops the exercise
+    exercise_initialize_uuid = models.CharField(max_length=50,default="12345678-1234-1234-1234-123456789abc")
 
 
 class User(models.Model):
@@ -23,6 +26,20 @@ class User(models.Model):
                                    to_field='id',
                                    on_delete=models.CASCADE) # Deletes the user if the related product is deleted
     created_at = models.DateTimeField(auto_now_add=True)
+    fitness_goal = models.CharField(max_length=30,default="undecided")
+    def get_age(self):
+        today = date.today()
+        born = self.date_of_birth
+        try: # handles the case where the birthday is today
+            birthday_this_year = born.replace(year=today.year)
+        except ValueError: # handles Feb 29th birthdays
+            birthday_this_year = born.replace(year=today.year, day=born.day-1)
+        if birthday_this_year > today:
+            return today.year - born.year - 1
+        else:
+            return today.year - born.year
+    def get_bmi(self):
+        return # TODO
     class Meta:
         app_label = 'FITTR_API'
 
