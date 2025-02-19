@@ -63,7 +63,8 @@ def register_user(request):
             "phone_number", 
             "gender", 
             "date_of_birth", 
-            "product_id"
+            "product_id",
+            "fitness_goal"
         ]
 
         for field in required_fields:
@@ -83,7 +84,6 @@ def register_user(request):
 
         if User.objects.filter(email=data['email']).exists():
             return JsonResponse({"error": f"User with email {data['email']} already exists."}, status=400)
-        
         # Create user with hashed password
         user = User.objects.create(
             first_name=data["first_name"],
@@ -96,6 +96,7 @@ def register_user(request):
             gender=data["gender"],
             date_of_birth=date_of_birth, 
             product_id=product, # Foreign Key
+            fitness_goal=data["fitness_goal"]
         )
         
         return JsonResponse({"message": "Registration successfull.", "user_id": user.id}, status=201)

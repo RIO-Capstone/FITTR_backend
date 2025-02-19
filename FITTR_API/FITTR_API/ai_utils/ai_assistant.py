@@ -11,10 +11,11 @@ class AIAssistant:
         self.context = ""
         self.user = user
         greeting = "Ms." if self.user.gender == "female" else "Mr."
+        fitness_desc = self.getPersonaDescription(self.user.fitness_goal)
         self.history = [{"role": "system", 
                         "content": 
                         f"You are a fitness AI assistant for {greeting} {self.user.first_name}. {self.user.first_name} \
-                        is {self.user.get_age()} years old and has the fitness goal of {self.user.fitness_goal}. \
+                        is {self.user.get_age()} years old and has the fitness goal of {fitness_desc}. \
                         {self.user.first_name} has a weight of {self.user.weight} kg and height of {self.user.height} meters. \
                         Use the information about {self.user.first_name} to provide fitness advice. "}]
 
@@ -57,6 +58,17 @@ class AIAssistant:
         self.history.append({"role": "assistant", "content": response["message"]["content"]})
 
         return response["message"]["content"]
+    
+    def getPersonaDescription(self,persona:str)->str:
+        # ensure consistency with the persona profiles in the app
+        fitnessGoalToDescription = {
+            "Strength Seeker": "focused on improving overall strength and endurance through progressive overload in bodyweight and resistance exercises, such as push-ups, pull-ups, and compound lifts.",
+            "Muscle Sculptor": "aims to build muscle definition and hypertrophy in targeted muscle groups by following a structured weight training program with progressive overload, proper recovery, and optimized nutrition."
+        }
+        if persona in fitnessGoalToDescription:
+            return fitnessGoalToDescription[persona]
+        else:
+            return "undecided"
 
 class SingletonAIAssistant:
     _instance = None

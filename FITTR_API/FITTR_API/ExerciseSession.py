@@ -40,12 +40,13 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
         try:
             self.testing_df.to_csv("testing_file.csv",index=False) # For visualisation purposes
             self.duration = (timezone.now()-self.start_time).total_seconds()
-            if(self.rep_count >= 1): # makes sense to save the session if at least a rep was performed
+            if(self.rep_count >= 1): # makes sense to only save the session if at least a rep was performed
                 user_instance = await self.get_user_instance()
                 product_instace = await self.get_product_instance()
                 await self.store_exercise_session(user=user_instance,product=product_instace)
+                print(f"Saved exercise session: Type: {self.exercise_type} for user: {self.user_id}")
             else:
-                print(f"Session duration was not long enough, only lasted for {self.duration} seconds")
+                print(f"No reps performed discarding redundant session")
             print(f"WebSocket disconnected with code {close_code}")
         except User.DoesNotExist:
             print(f"WebSocket connection error because user with id {self.user_id} does not exist")
@@ -92,7 +93,7 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
                 """
                 left_index = pd.Series(current_record["LEFT_INDEX"][1],index=["LEFT_INDEX"])
                 self.add_exercise_point(left_index)
-            elif self.exercise_data == ExerciseType.RIGHT_BICEP_CURLS:
+            elif self.exercise_type == ExerciseType.RIGHT_BICEP_CURLS:
                 right_index = pd.Series(current_record["RIGHT_INDEX"][1],index=["RIGHT_INDEX"])
                 self.add_exercise_point(right_index)
             # if not calibration_check:
