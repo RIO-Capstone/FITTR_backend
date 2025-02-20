@@ -13,7 +13,7 @@ def register_product(request):
         data = json.loads(request.body)
         print("Parsed data:", data)
         required_fields = ["version"]
-        for field in required_fields:
+        for field in required_fields: 
             if field not in data:
                 return JsonResponse({"error": f"{field} is required."}, status=400)
         product = Product.objects.create(
