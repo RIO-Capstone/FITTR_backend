@@ -1,15 +1,19 @@
 import json
-import ollama
 import re
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from FITTR_API.models import User, Product, ExerciseSession
 from django.shortcuts import get_object_or_404
-
+from dotenv import load_dotenv
+import os
+from mistralai import Mistral
+load_dotenv()
 
 class AIAssistant:
     def __init__(self, user: User):
-        self.model_name = "mistral:latest"
+        self.api_key = os.getenv('MISTRAL_API_KEY')
+        self.model_name = "mistral-large-latest"
+        self.client = Mistral(api_key=self.api_key)
         self.context = ""
         self.history = [{"role": "system", "content": "You are a fitness AI assistant. Keep your responses short and concise."}]
 
@@ -50,25 +54,27 @@ class AIAssistant:
                 f"{self.context}"
             )
             self.history.append({"role": "user", "content": full_prompt})
-            response = ollama.chat(model=self.model_name, messages=self.history)
-            self.history.append({"role": "assistant", "content": response["message"]["content"]})
+
+            aiResponseObject = self.client.chat.complete(model=self.model_name,messages=self.history)
+            reply = aiResponseObject.choices[0].message.content
+            self.history.append({"role": "assistant", "content": reply})
 
             # Extract numeric values for score-related fields
             if key in ["form_score", "stability_score", "range_of_motion_score"]:
-                results[key] = extract_numeric_value(response["message"]["content"])
+                results[key] = self.extract_numeric_value(reply)
             else:
-                results[key] = response["message"]["content"]
-        
+                results[key] = reply
+
         return results
 
 
-def extract_numeric_value(text):
-    """
-    Extracts the first numeric value from a text response.
-    If no number is found, it defaults to 0.
-    """
-    match = re.search(r"\d+", text)
-    return int(match.group()) if match else 0
+    def extract_numeric_value(self,text):
+        """
+        Extracts the first numeric value from a text response.
+        If no number is found, it defaults to 0.
+        """
+        match = re.search(r"\d+", text)
+        return int(match.group()) if match else 0
 
 
 class SingletonAIAssistant:
