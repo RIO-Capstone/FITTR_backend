@@ -19,7 +19,8 @@ user_paths = [
     path('user/<int:id>', get_user),
     path('user/login',login_user),
     path('user/<int:id>/history',get_user_history),
-    path('user/<int:id>/ai_reply',get_ai_user_feedback)
+    path('user/<int:id>/ai_reply',get_ai_user_feedback),
+    path('user/<int:user_id>/ai_feedback', get_ai_feedback)
 ]
 
 product_paths = [
@@ -30,7 +31,6 @@ product_paths = [
 
 # URL patterns
 urlpatterns = [
-    path('user/<int:user_id>/ai_feedback', get_ai_feedback),
     path('api/hello/', hello_world),
     path('admin',admin.site.urls),
     *user_paths,

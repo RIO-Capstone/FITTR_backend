@@ -1,11 +1,14 @@
 import json
 import ollama
+import re
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from FITTR_API.models import User
+from FITTR_API.models import User, Product, ExerciseSession
+from django.shortcuts import get_object_or_404
+
 
 class AIAssistant:
-    def __init__(self,user:User):
+    def __init__(self, user: User):
         self.model_name = "mistral:latest"
         self.context = ""
         self.history = [{"role": "system", "content": "You are a fitness AI assistant. Keep your responses short and concise."}]
@@ -33,9 +36,12 @@ class AIAssistant:
         prompts = {
             "summary_advice": "Provide a concise summary of the user's workout performance and key takeaways.",
             "summary_analysis": "Analyze the user's workout trends, improvements, and areas needing attention.",
-            "future_advice": "Give specific and actionable advice for improving future workouts based on past performance."
+            "future_advice": "Give specific and actionable advice for improving future workouts based on past performance.",
+            "form_score": "Provide only a number (no words) between 1-100 for the user's form score based on their workout performance.",
+            "stability_score": "Provide only a number (no words) between 1-100 for the user's stability score based on their workout performance.",
+            "range_of_motion_score": "Provide only a number (no words) between 1-100 for the user's range of motion score based on their workout performance."
         }
-        
+
         results = {}
         for key, prompt in prompts.items():
             full_prompt = (
@@ -46,35 +52,62 @@ class AIAssistant:
             self.history.append({"role": "user", "content": full_prompt})
             response = ollama.chat(model=self.model_name, messages=self.history)
             self.history.append({"role": "assistant", "content": response["message"]["content"]})
-            results[key] = response["message"]["content"]
+
+            # Extract numeric values for score-related fields
+            if key in ["form_score", "stability_score", "range_of_motion_score"]:
+                results[key] = extract_numeric_value(response["message"]["content"])
+            else:
+                results[key] = response["message"]["content"]
         
         return results
 
+
+def extract_numeric_value(text):
+    """
+    Extracts the first numeric value from a text response.
+    If no number is found, it defaults to 0.
+    """
+    match = re.search(r"\d+", text)
+    return int(match.group()) if match else 0
+
+
 class SingletonAIAssistant:
-    _instance = None
+    _instances = {}
 
     @staticmethod
-    def get_instance(user:User):
-        if SingletonAIAssistant._instance is None:
-            SingletonAIAssistant._instance = AIAssistant()
-        return SingletonAIAssistant._instance
+    def get_instance(user: User):
+        if user.id not in SingletonAIAssistant._instances:
+            SingletonAIAssistant._instances[user.id] = AIAssistant(user)
+        return SingletonAIAssistant._instances[user.id]
+
 
 @csrf_exempt
 def get_ai_feedback(request, user_id):
     """
     API endpoint to get AI-generated feedback.
     """
+    user = get_object_or_404(User, id=user_id)
+
     user_sessions = [
         {"exercise_type": "push-up", "duration": 30, "reps": 15, "errors": 1, "created_at": "2025-02-16 10:00:00"},
         {"exercise_type": "squat", "duration": 40, "reps": 20, "errors": 0, "created_at": "2025-02-16 10:05:00"}
     ]  # Dummy data for now
-    
+
     print("Collecting AI feedback...")
-    print("Registered user ID:", user_id)
-    ai_assistant = SingletonAIAssistant.get_instance()
+    print("Registered user ID:", user.id)
+
+    ai_assistant = SingletonAIAssistant.get_instance(user)
     feedback = ai_assistant.generate_texts(user_sessions)
+
     response = {
-        "user_id": user_id,
-        "feedback": feedback
+        "user_id": user.id,
+        "feedback": {
+            "summary_advice": feedback.get("summary_advice", ""),
+            "summary_analysis": feedback.get("summary_analysis", ""),
+            "future_advice": feedback.get("future_advice", ""),
+            "form_score": feedback.get("form_score", 0),
+            "stability_score": feedback.get("stability_score", 0),
+            "range_of_motion_score": feedback.get("range_of_motion_score", 0)
+        }
     }
     return JsonResponse(response)
