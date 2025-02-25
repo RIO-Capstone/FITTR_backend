@@ -92,7 +92,8 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
                 """
                 left_index = pd.Series(current_record["LEFT_INDEX"][1],index=["LEFT_INDEX"])
                 self.add_exercise_point(left_index)
-            elif self.exercise_data == ExerciseType.RIGHT_BICEP_CURLS:
+            elif self.exercise_type == ExerciseType.RIGHT_BICEP_CURLS:
+                print(current_record, type(current_record))
                 right_index = pd.Series(current_record["RIGHT_INDEX"][1],index=["RIGHT_INDEX"])
                 self.add_exercise_point(right_index)
             # if not calibration_check:
