@@ -213,7 +213,7 @@ def joint_angles_per_record(record, joints):
 
 def exercise_to_algo_map(exercise_type:str)->Callable:
     if exercise_type == ExerciseType.SQUATS:
-        return squat_reps
+        return squat_rep_factory_function()
     elif exercise_type == ExerciseType.LEFT_BICEP_CURLS:
         return left_bicep_curl_reps
     elif exercise_type == ExerciseType.RIGHT_BICEP_CURLS:
@@ -221,22 +221,22 @@ def exercise_to_algo_map(exercise_type:str)->Callable:
     else:
         pass
 
-def squat_reps(current_record:pd.Series,past_record:pd.Series | None)->int:
-    if past_record is None or past_record.empty: return 0
-    angle_threshold = ExerciseType.SQUATS_THRESHOLD
-    # if "RIGHT_KNEE_z" not in current_record.index:
-    #      return 0
-    # if current_record["RIGHT_KNEE_z"] <= thr and past_record["RIGHT_KNEE_z"] > thr:
-    #     return 1
-    # else:
-    #     return 0
-    if "LEFT_ANGLE" not in current_record.index or "RIGHT_ANGLE" not in current_record.index:
-         return 0
-    left_check = current_record["LEFT_ANGLE"] >= angle_threshold and past_record["LEFT_ANGLE"] < angle_threshold
-    right_check = current_record["RIGHT_ANGLE"] >= angle_threshold and past_record["RIGHT_ANGLE"] < angle_threshold
-    if left_check and right_check:
-        return 1
-    return 0
+def squat_rep_factory_function()->Callable:
+    SQUATTING = False
+    def squat_reps(current_record:pd.Series,past_record:pd.Series|None = None)->int:
+        nonlocal SQUATTING # using SQUATTING as almost a global variable
+        angle_threshold = ExerciseType.SQUATS_THRESHOLD
+        if "LEFT_ANGLE" not in current_record.index or "RIGHT_ANGLE" not in current_record.index:
+            return 0
+        TEMP_SQUAT_STATE = current_record["LEFT_ANGLE"] >= angle_threshold and current_record["RIGHT_ANGLE"] >= angle_threshold
+        if TEMP_SQUAT_STATE and SQUATTING == False:
+            SQUATTING = True
+            return 1
+        elif current_record["LEFT_ANGLE"] < angle_threshold and current_record["RIGHT_ANGLE"] < angle_threshold and SQUATTING:
+            SQUATTING = False
+            return 0
+        return 0
+    return squat_reps
     
 def left_bicep_curl_reps(current_record:pd.Series,past_record:pd.Series|None)->int:
     if past_record is None or past_record.empty: return 0
@@ -269,24 +269,6 @@ def get_relevant_squat_joints(record: pd.Series) -> pd.Series:
     Drops data that isn't relevent for Squats.
     """
     return record[["LEFT_HIP", "LEFT_KNEE", "LEFT_ANKLE","RIGHT_HIP", "RIGHT_KNEE", "RIGHT_ANKLE"]]
-    # prefixes_to_drop = [
-    #     'NOSE', 'LEFT_EYE', 'RIGHT_EYE', 'LEFT_EAR', 'RIGHT_EAR',
-    #     'MOUTH', 'LEFT_SHOULDER', 'RIGHT_SHOULDER', 'LEFT_ELBOW', 'RIGHT_ELBOW',
-    #     'LEFT_WRIST', 'RIGHT_WRIST', 'LEFT_PINKY', 'RIGHT_PINKY', 'LEFT_INDEX',
-    #     'RIGHT_INDEX', 'LEFT_THUMB', 'RIGHT_THUMB', 'LEFT_ANKLE', 'RIGHT_ANKLE',
-    #     'LEFT_HEEL', 'RIGHT_HEEL', 'LEFT_FOOT_INDEX', 'RIGHT_FOOT_INDEX'
-    # ]
-    # prefixes_to_drop = [
-    #     'NOSE', 'LEFT_EYE', 'RIGHT_EYE', 'LEFT_EAR', 'RIGHT_EAR',
-    #     'MOUTH', 'LEFT_ELBOW', 'RIGHT_ELBOW',
-    #     'LEFT_WRIST', 'RIGHT_WRIST', 'LEFT_PINKY', 'RIGHT_PINKY', 'LEFT_INDEX',
-    #     'RIGHT_INDEX', 'LEFT_THUMB', 'RIGHT_THUMB',
-    #     'LEFT_HEEL', 'RIGHT_HEEL', 'LEFT_FOOT_INDEX', 'RIGHT_FOOT_INDEX'
-    # ]
-    
-    # # Identify columns to drop based on prefixes
-    # columns_to_drop = [col for col in record.index if any(col.startswith(prefix) for prefix in prefixes_to_drop)]
-    # return record.drop(columns_to_drop)
 
 def get_left_bicep_curl_joints(record:pd.Series) -> pd.Series:
     return record[["LEFT_INDEX"]]
