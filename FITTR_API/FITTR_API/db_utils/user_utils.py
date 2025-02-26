@@ -195,25 +195,6 @@ def get_user_history(request,id):
         print(e)
         return JsonResponse({"error": "Server Error", "message": str(e)}, status=500)
 
-@csrf_exempt
-@require_http_methods(["GET"])
-def get_ai_user_feedback(request,id):
-    try:
-        all_sessions = ExerciseSession.objects.filter(user_id=id)
-        if not all_sessions:
-            return JsonResponse({"message":"Get some work in to get some feedback!"})
-        # init AI Assistant Singleton class
-        user_instance = User.objects.get(id=id)
-        assistant = SingletonAIAssistant.get_instance(user=user_instance)
-        reply = assistant.reply(data=all_sessions)
-        print("AI Reply: " + reply)
-        return JsonResponse({"message":reply})
-    except User.DoesNotExist:
-        return JsonResponse({"error":"User not found"},status=404)
-    except Exception as e:
-        print(e)
-        return JsonResponse({"error":"Internal server error"},status=500)
-
 def format_date_with_suffix(date_obj)->str:
     # Helper function to get the ordinal suffix
     def get_ordinal_suffix(day):

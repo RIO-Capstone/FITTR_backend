@@ -15,7 +15,6 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
         self.exercise_data = pd.DataFrame()
         self.rep_count = 0
         self.is_calibrated = False
-        self.testing_df = pd.DataFrame()
         self.start_time = None
         self.duration = 0
 
@@ -38,7 +37,7 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
         Called when the WebSocket closes for any reason.
         """
         try:
-            self.testing_df.to_csv("testing_file.csv",index=False) # For visualisation purposes
+            self.exercise_data.to_csv("testing_file.csv",index=False) # For visualisation purposes
             self.duration = (timezone.now()-self.start_time).total_seconds()
             if(self.rep_count >= 1): # makes sense to only save the session if at least a rep was performed
                 user_instance = await self.get_user_instance()
@@ -80,12 +79,7 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
                 angle_left_knee = joint_angles_per_record(current_record,left_knee_angle_joints)
                 angle_right_knee = joint_angles_per_record(current_record,right_knee_angle_joints)
                 angle_record = pd.Series([angle_left_knee,angle_right_knee],index=["LEFT_ANGLE","RIGHT_ANGLE"])
-                #smoothed_angles = smooth_gaussian_live(angle_record,self.exercise_data)
-                #self.testing_df = pd.concat([self.testing_df,smoothed_angles.to_frame().T],axis=0)
 
-                #if not self.exercise_data.empty:
-                    #past_record = self.exercise_data.iloc[-1]
-                    #self.rep_count += self.rep_function(smoothed_angles,past_record)
                 self.add_exercise_point(angle_record)
             elif self.exercise_type == ExerciseType.LEFT_BICEP_CURLS:
                 """
