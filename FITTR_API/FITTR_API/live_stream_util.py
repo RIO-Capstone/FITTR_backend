@@ -81,63 +81,6 @@ def spread_record(record:pd.Series) -> pd.Series:
 def min_max_scaler(col:pd.Series,min_value,max_value)->pd.Series:
         return col.map(lambda x: (x-min_value)/(max_value-min_value))
 
-def smooth_gaussian_live(record: pd.Series, window_data: pd.DataFrame, sigma: float = 2, window_size: int = 30) -> pd.Series:
-    """
-    Apply Gaussian smoothing to a live stream without affecting past smoothed values.
-
-    Parameters:
-    - record: pd.Series, the current live data point.
-    - window_data: pd.DataFrame, past raw data points (not smoothed).
-    - sigma: float, standard deviation of the Gaussian kernel.
-    - window_size: int, size of the smoothing window.
-
-    Returns:
-    - pd.Series: Smoothed version of the current record.
-    """
-    # Append current record to the window data
-    window_data = pd.concat([window_data, record.to_frame().T], axis=0)
-    
-    # Ensure window size limit
-    window_data = window_data.iloc[-window_size:]
-    
-    # Apply Gaussian kernel
-    kernel_radius = int(3 * sigma)
-    x = np.arange(-kernel_radius, kernel_radius + 1)
-    gaussian_kernel = np.exp(-x**2 / (2 * sigma**2))
-    gaussian_kernel /= gaussian_kernel.sum()  # Normalize kernel
-
-    # Apply Gaussian smoothing on each column separately
-    smoothed_values = {}
-    for column in window_data.columns:
-        padded_column = np.pad(window_data[column].values, (kernel_radius, 0), mode='constant')
-        convolved_column = np.convolve(padded_column, gaussian_kernel, mode='valid')
-        smoothed_values[column] = convolved_column[-1]  # Take the latest smoothed value
-
-    # Return as a Series with the same index as the current record
-    return pd.Series(smoothed_values, index=record.index)
-
-def smooth_gaussian(data:pd.Series, sigma=2)->pd.Series:
-    """
-    Smoothen the curves using a Gaussian filter.
-    Parameters:
-    - data: NumPy array, the input signal to smooth.
-    - sigma: Standard deviation of the Gaussian kernel.
-    Returns:
-    - smoothed_data: NumPy array of the smoothed data.
-    """
-    kernel_radius = int(3 * sigma)  # 3 standard deviations cover ~99% of data
-    x = np.arange(-kernel_radius, kernel_radius + 1)
-    gaussian_kernel = np.exp(-x**2 / (2 * sigma**2))
-    gaussian_kernel /= gaussian_kernel.sum()  # Normalize the kernel
-    
-    # Padding to avoid edge effects
-    padded_data = np.pad(data, pad_width=kernel_radius, mode='symmetric')
-    
-    # Convolution with Gaussian kernel
-    smoothed_data = np.convolve(padded_data, gaussian_kernel, mode='valid')
-    
-    return pd.Series(smoothed_data,index=data.index)
-
 def calculate_angle(joint_a, joint_b, joint_c):
     """
     Calculate the angle between three joints in 3D space using numpy.
@@ -250,7 +193,7 @@ def right_bicep_curl_reps(current_record:pd.Series,past_record:pd.Series|None)->
     if past_record is None or past_record.empty: return 0
     thr = ExerciseType.RIGHT_BICEP_CURLS_THRESHOLD
     if "RIGHT_INDEX" not in current_record.index: return 0
-    if current_record["RIGHT_INDEX"] >= thr and past_record["RIGHT_INDEX"] < thr:
+    if current_record["RIGHT_INDEX"] <= thr and past_record["RIGHT_INDEX"] > thr:
         return 1
     return 0
     
@@ -274,3 +217,8 @@ def get_left_bicep_curl_joints(record:pd.Series) -> pd.Series:
     return record[["LEFT_INDEX"]]
 def get_right_bicep_curl_joints(record:pd.Series) -> pd.Series:
     return record[["RIGHT_INDEX"]]
+
+def ema_smoothing(current_record:pd.Series,past_record:pd.Series,alpha=0.5)->pd.Series:
+    if past_record is None or past_record.empty:
+        return current_record
+    return alpha * current_record + (1 - alpha) * past_record

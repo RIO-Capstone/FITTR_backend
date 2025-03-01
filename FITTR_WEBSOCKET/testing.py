@@ -1,4 +1,4 @@
-from src.LSTM_Squat import LSTM_Squat
+import tensorflow as tf
 from g_media_pipe import extract_data_from_video, save_data, process_and_save_mp4_to_csv, list_files_in_directory
 import pandas as pd
 import numpy as np
@@ -6,16 +6,20 @@ import os
 import ast
 from typing import List
 from src.LSTM import LSTM
+from src.SquatsNN import SquatNN
+from FITTR_WEBSOCKET.src.AttnLSTM import AttentionLSTM
 
-MP4_DATASETS = "datasets"
+curdir = os.path.dirname(__file__)
+# Directories
+MP4_DATASETS = os.path.join(curdir,"datasets")
 SQUATS_MP4 = os.path.join(MP4_DATASETS,"Squats")
 PROPER_SQUATS_MP4 = os.path.join(SQUATS_MP4,"Proper")
 IMPROPER_SQUATS_MP4 = os.path.join(SQUATS_MP4,"Improper")
-CSV_SAVE_LOCATION = "model_data"
+CSV_SAVE_LOCATION = os.path.join(curdir,"model_data")
 SQUATS_CSV = os.path.join(CSV_SAVE_LOCATION,"Squats")
 PROPER_SQUATS_CSV = os.path.join(SQUATS_CSV,"Proper")
 IMPROPER_SQUATS_CSV = os.path.join(SQUATS_CSV,"Improper")
-IDEAL_FRAME_LENGTH = 107
+IDEAL_FRAME_LENGTH = 60
 
 def read_data()->tuple:
         # read then label
@@ -24,10 +28,10 @@ def read_data()->tuple:
         # TODO: Labelling needs to be changed based on the type of exercise
         proper_labels = np.ones((len(proper_data),))
         improper_labels = np.zeros((len(improper_data),))
-
         combined_data = np.concatenate((proper_data, improper_data), axis=0)
         combined_labels = np.concatenate((proper_labels, improper_labels), axis=0)
         assert combined_data.shape[0] == combined_labels.shape[0], f"Number of samples and labels does not match. Samples: {combined_data.shape[0]} , Labels: {combined_labels.shape[0]}"
+        assert len(combined_data.shape) == 3, f"Data shape is not 3D but is instead {combined_data.shape}"
         assert combined_data.shape[2] == 33*3, f"Number of features is not {33*3} but is instead {combined_data.shape[2]}"
         return combined_data, combined_labels
 
@@ -83,12 +87,55 @@ def process_data(csv_file:str)->pd.DataFrame:
 #     print(f"Finished processing {file_name} --> {output_file_name}")
 
 #df = pd.read_csv(r"D:\NirwanaWarehouse\uniWork\Term 7\Capstone\backend\model_data\Squats\Proper\properSquat1.csv")
-
+def spread_data(csv_file:str)->pd.DataFrame:
+    video_data = pd.read_csv(csv_file)
+    if video_data is None: 
+        print("No data found for csv file: {}".format(csv_file))
+        return pd.DataFrame()
+    video_data = video_data.map(ast.literal_eval) # converting all the strings to list[float]
+    x_coors = video_data.map(lambda coords: coords[0])  # Get the X coordinates
+    y_coors = video_data.map(lambda coords: coords[1])  # Get the Y coordinates
+    z_coors = video_data.map(lambda coords: coords[2])  # Get the Z coordinates
+    # Combine these into a single DataFrame with columns like NOSE_x, NOSE_y, NOSE_z, etc.
+    x_coors.columns = [f'{col}_x' for col in x_coors.columns]
+    y_coors.columns = [f'{col}_y' for col in y_coors.columns]
+    z_coors.columns = [f'{col}_z' for col in z_coors.columns]
+    # Combine the x, y, z data into a single DataFrame
+    coordinates_df = pd.concat([x_coors, y_coors, z_coors], axis=1)
+    return coordinates_df
 # print(IDEAL_FRAME_LENGTH)
+TRAINING = False
+prediction_classes = [1,0]
+y = 1
+model = SquatNN("SquatsNN",prediction_classes,IDEAL_FRAME_LENGTH,SQUATS_CSV)
+attnModel = AttentionLSTM("SquatsAttnNN",prediction_classes,IDEAL_FRAME_LENGTH,SQUATS_CSV)
+if TRAINING:
+    attnModel.train(batch_size=4)
+else:
+    first = spread_data(r"D:\NirwanaWarehouse\uniWork\Term 7\Capstone\backend\FITTR_WEBSOCKET\datasets\Test\Squats_8_reps.csv")
+    data = first.to_numpy() #converting to numpy array.
+    chunks = []
+    num_chunks = (len(data) + IDEAL_FRAME_LENGTH - 1) // IDEAL_FRAME_LENGTH #calculates the number of chunks.
 
-prediction_classes = {1,0}
-#X,y = read_data()
+    for i in range(num_chunks):
+        start = i * IDEAL_FRAME_LENGTH
+        end = min((i + 1) * IDEAL_FRAME_LENGTH, len(data))
+        chunk = data[start:end]
 
-#print(batch)
-squat_predictor = LSTM("Squat_LSTM",IDEAL_FRAME_LENGTH,prediction_classes,SQUATS_CSV,1)
-squat_predictor.train()
+        if len(chunk) < IDEAL_FRAME_LENGTH:
+            chunk = tf.keras.preprocessing.sequence.pad_sequences([chunk], maxlen=IDEAL_FRAME_LENGTH, padding='post', dtype='float32')[0] #pad the last chunk.
+
+        chunks.append(chunk)
+
+    print(f"Number of chunks: {len(chunks)}")
+
+    for chunk in chunks:
+        print(f"Chunk shape: {chunk.shape}")
+
+        if chunk.shape == (IDEAL_FRAME_LENGTH, 99): #added check for correct shape.
+            chunk = chunk.reshape(1, IDEAL_FRAME_LENGTH, 99)
+            res = attnModel.predict(chunk)
+            print(f"Prediction: {res}")
+            print(f"Prediction class: {np.argmax(res)}")
+        else:
+            print("Error: Chunk shape is incorrect")
