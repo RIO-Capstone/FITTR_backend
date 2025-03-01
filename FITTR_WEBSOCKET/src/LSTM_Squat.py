@@ -24,6 +24,7 @@ class LSTM_Squat(tf.keras.Model):
         super().__init__()
         self.num_classes = len(class_mapping)
         self.video_sequence_limit = video_sequence
+        self.save_path = os.path.join("FITTR_WEBSOCKET","models", f"{self.name}.h5")
         # mask_value same as the padding in process data
         self.inputs = tf.keras.Input(
         batch_shape=(batch_size, video_sequence, 33*3), 
@@ -54,15 +55,17 @@ class LSTM_Squat(tf.keras.Model):
         #padded_data = pad_sequences(X, padding='post', dtype='float32',value=-1.0)
         self.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
         self.fit(X, y_one_hot_encoded)
-        save_directory = os.path.join("models","LSTM_Squats.h5")
-        self.save_weights(save_directory)
+        self.save_weights(self.save_path)
 
     def test(self):
         pass
 
     def predict(self,x_val):
         assert len(x_val.shape) == 3, f"Prediction input for the model {type(self.model)} must be a 3D array "
-        self.load_weights(os.path.join("models","LSTM_Squats.h5"))
+        if not os.path.exists(self.save_path):
+            print("Model weights not found, please train the model first")
+            return
+        self.load_weights(self.save_path)
         return self(x_val)
     
     def set_states(self,states):

@@ -26,7 +26,7 @@ class LSTM:
         self.data_path = data_path
         self.video_sequence_limit = video_sequence
         self.input_shape =  (video_sequence,33*3) # (timestamps, features)
-        
+        self.save_path = os.path.join("FITTR_WEBSOCKET","models", f"{self.name}.h5")
         self.model = tf.keras.models.Sequential()
         # mask_value same as the padding in process data
         self.model.add(tf.keras.layers.Masking(mask_value=-1.0, batch_input_shape=(batch_size,self.video_sequence_limit,33*3)))
@@ -62,8 +62,7 @@ class LSTM:
             # Reset states at the end of each epoch
             self.model.reset_states()
 
-        save_directory = os.path.join("models",f"{self.name}.h5")
-        self.model.save(save_directory)
+        self.model.save(self.save_path)
 
     def test(self):
         pass
@@ -71,12 +70,11 @@ class LSTM:
     def predict(self,x_val):
         assert len(x_val.shape) == 3, f"Prediction input for the model {type(self.model)} must be a 3D array "
         assert x_val.shape[2] == 33*3, f"Input data must have 99 features but has {x_val.shape[2]} features"
-        file_path = os.path.join("models",f"{self.name}.h5")
-        if not os.path.exists(file_path):
-            print(f"Model not found at {file_path}")
+        if not os.path.exists(self.save_path):
+            print(f"Model not found at {self.save_path}")
             return
-        self.model.load_weights(filepath=file_path)
-        self.model.predict(x_val)
+        self.model.load_weights(filepath=self.save_path)
+        return self.model.predict(x_val)
 
     def read_data(self)->tuple:
         # read then label
