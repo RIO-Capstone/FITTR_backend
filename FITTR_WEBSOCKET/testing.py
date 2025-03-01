@@ -6,12 +6,15 @@ import os
 import ast
 from typing import List
 from src.LSTM import LSTM
+from src.SquatsNN import SquatNN
 
-MP4_DATASETS = "datasets"
+curdir = os.path.dirname(__file__)
+# Directories
+MP4_DATASETS = os.path.join(curdir,"datasets")
 SQUATS_MP4 = os.path.join(MP4_DATASETS,"Squats")
 PROPER_SQUATS_MP4 = os.path.join(SQUATS_MP4,"Proper")
 IMPROPER_SQUATS_MP4 = os.path.join(SQUATS_MP4,"Improper")
-CSV_SAVE_LOCATION = "model_data"
+CSV_SAVE_LOCATION = os.path.join(curdir,"model_data")
 SQUATS_CSV = os.path.join(CSV_SAVE_LOCATION,"Squats")
 PROPER_SQUATS_CSV = os.path.join(SQUATS_CSV,"Proper")
 IMPROPER_SQUATS_CSV = os.path.join(SQUATS_CSV,"Improper")
@@ -24,10 +27,10 @@ def read_data()->tuple:
         # TODO: Labelling needs to be changed based on the type of exercise
         proper_labels = np.ones((len(proper_data),))
         improper_labels = np.zeros((len(improper_data),))
-
         combined_data = np.concatenate((proper_data, improper_data), axis=0)
         combined_labels = np.concatenate((proper_labels, improper_labels), axis=0)
         assert combined_data.shape[0] == combined_labels.shape[0], f"Number of samples and labels does not match. Samples: {combined_data.shape[0]} , Labels: {combined_labels.shape[0]}"
+        assert len(combined_data.shape) == 3, f"Data shape is not 3D but is instead {combined_data.shape}"
         assert combined_data.shape[2] == 33*3, f"Number of features is not {33*3} but is instead {combined_data.shape[2]}"
         return combined_data, combined_labels
 
@@ -85,10 +88,13 @@ def process_data(csv_file:str)->pd.DataFrame:
 #df = pd.read_csv(r"D:\NirwanaWarehouse\uniWork\Term 7\Capstone\backend\model_data\Squats\Proper\properSquat1.csv")
 
 # print(IDEAL_FRAME_LENGTH)
-
+TRAINING = False
 prediction_classes = {1,0}
-#X,y = read_data()
-
-#print(batch)
-squat_predictor = LSTM("Squat_LSTM",IDEAL_FRAME_LENGTH,prediction_classes,SQUATS_CSV,1)
-squat_predictor.train()
+X,y = read_data()
+model = SquatNN("SquatsNN",prediction_classes,IDEAL_FRAME_LENGTH,SQUATS_CSV)
+if TRAINING:
+    model.train(batch_size=4)
+else:
+    first = X[0].reshape(1,IDEAL_FRAME_LENGTH,33*3)
+    res = model.predict(first)
+    print(res)

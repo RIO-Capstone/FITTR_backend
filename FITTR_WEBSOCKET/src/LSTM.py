@@ -31,7 +31,7 @@ class LSTM:
         # mask_value same as the padding in process data
         self.model.add(tf.keras.layers.Masking(mask_value=-1.0, batch_input_shape=(batch_size,self.video_sequence_limit,33*3)))
 
-        self.model.add(tf.keras.layers.LSTM(units=128, activation='relu', return_sequences=True, input_shape=self.input_shape,stateful=True))
+        self.model.add(tf.keras.layers.LSTM(units=128, activation='relu', return_sequences=True, input_shape=self.input_shape,stateful=True, batch_input_shape=(batch_size,self.video_sequence_limit,33*3)))
         self.model.add(tf.keras.layers.LSTM(units=256, activation='relu', return_sequences=True,stateful=True))
         self.model.add(tf.keras.layers.LSTM(units=128, activation='relu', return_sequences=False,stateful=True))
         self.model.add(tf.keras.layers.BatchNormalization())
@@ -58,11 +58,11 @@ class LSTM:
             print(f"Epoch {epoch + 1}/{epochs}")
             # Train for one epoch, ensuring batch_size = 1 and shuffle = False
             # this ensures that predictions are done with one batch_size and data is processed sequentially
-            self.model.fit(dataset, epochs=1, verbose=1,batch_size=1,shuffle=False)
+            self.model.fit(dataset, epochs=1, verbose=1,batch_size=1,shuffle=False,steps_per_epoch=X.shape[0])
             # Reset states at the end of each epoch
             self.model.reset_states()
 
-        save_directory = os.path.join("models","LSTM_Squats.h5")
+        save_directory = os.path.join("models",f"{self.name}.h5")
         self.model.save(save_directory)
 
     def test(self):
@@ -70,8 +70,13 @@ class LSTM:
 
     def predict(self,x_val):
         assert len(x_val.shape) == 3, f"Prediction input for the model {type(self.model)} must be a 3D array "
-        loaded_model = self.model.load_weights(os.path.join("models","LSTM_Squats.h5"))
-        return loaded_model.predict(x_val)
+        assert x_val.shape[2] == 33*3, f"Input data must have 99 features but has {x_val.shape[2]} features"
+        file_path = os.path.join("models",f"{self.name}.h5")
+        if not os.path.exists(file_path):
+            print(f"Model not found at {file_path}")
+            return
+        self.model.load_weights(filepath=file_path)
+        self.model.predict(x_val)
 
     def read_data(self)->tuple:
         # read then label

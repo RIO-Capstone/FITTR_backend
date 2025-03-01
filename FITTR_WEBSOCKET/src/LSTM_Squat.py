@@ -39,7 +39,6 @@ class LSTM_Squat(tf.keras.Model):
         self.output_layer = tf.keras.layers.Dense(self.num_classes, activation='softmax')
 
     def call(self, inputs, training=False):
-        x = self.inputs(inputs)
         x = self.masking(inputs)
         x = self.lstm1(x)
         x = self.lstm2(x)
