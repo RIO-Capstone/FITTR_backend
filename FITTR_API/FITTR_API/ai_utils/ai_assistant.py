@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import os
 from mistralai import Mistral
 from typing import List, Mapping
+from ExerciseType import ExerciseType
 load_dotenv()
 
 class AIAssistant:
@@ -66,20 +67,28 @@ class AIAssistant:
             else:
                 results[key] = reply
         
-    def single_session_feedback(self,session:str):
-        full_prompt = (
-            f"You are a personal trainer analyzing a user's workout session. Use the session data provided to \
-            give specific and actionable advice for improving future workouts in an encouraging way. It is \
-            very important that you provide only 2 bullet points!" 
-            f"Here is the session data:\n"
-            f"{session}"
-        )
-        self.history.append({"role": "user", "content": full_prompt})
-        ai_response = self.client.chat.complete(model=self.model_name,messages=self.history)
-        reply = ai_response.choices[0].message.content
-        self.history.append({"role": "assistant", "content": reply})
-        return reply
+    def ai_reply_json(self, prompt: str, desired_output_format: dict) -> str:
 
+        format_description = "Return a JSON object with the following structure:\n"
+        for key, data_type in desired_output_format.items():
+            format_description += f"- '{key}': {data_type.__name__}\n" #getting the name of the datatype
+
+        full_prompt = f"{prompt}\n\n{format_description}\nEnsure the response is a valid JSON object."
+
+        self.history.append({"role": "user", "content": full_prompt})
+
+        response_format = {"type": "json_object"}
+
+        ai_response = self.client.chat.complete(
+            model=self.model_name,
+            messages=self.history,
+            response_format=response_format,
+        )
+
+        reply: str = ai_response.choices[0].message.content
+        self.history.append({"role": "assistant", "content": reply})
+
+        return reply
 
     def extract_numeric_value(self,text):
         """
@@ -152,9 +161,17 @@ def get_feedback_on_latest_exercise_session(request):
         user_id = session_data['user_id']
         user = User.objects.get(id=user_id)
         ai_assistant = SingletonAIAssistant.get_instance(user=user)
-        session_data["duration"] += " seconds"
-        feedback = ai_assistant.single_session_feedback(json.dumps(session_data))
-        print(f"AI session feedback " + feedback)
+        session_data["duration"] = str(session_data["duration"]) + " seconds"
+        full_prompt = (
+            f"You are a personal trainer analyzing a user's workout session. Use the session data provided to \
+            give specific and actionable advice for improving future workouts in an encouraging way."
+            f"Here is the session data:\n"
+            f"{json.dumps(session_data)}"
+        )
+        output_format = {"feedback_message":str}
+        feedback_response = ai_assistant.ai_reply_json(prompt=full_prompt,desired_output_format=output_format)
+        feedback_json = json.loads(feedback_response)
+        feedback = feedback_json.get("feedback_message")
         return JsonResponse({"feedback_message":feedback})
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON format."}, status=400)
@@ -163,3 +180,32 @@ def get_feedback_on_latest_exercise_session(request):
     except Exception as e:
         print(e)
         return JsonResponse({"error":"Internal server error"},500)
+    
+@csrf_exempt
+@require_http_methods(["GET"])
+def get_ai_rep_generation(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+        ai_assistant = SingletonAIAssistant.get_instance(user)
+        # dynamically get all exercise types from the ExerciseType enum
+        exercise_types = [attr for attr in dir(ExerciseType) if not callable(getattr(ExerciseType, attr)) and not attr.startswith("__") and not attr.endswith("_THRESHOLD")]
+        exercise_list = ", ".join(exercise_types)
+        
+        prompt = (
+            f"You are a personal trainer analyzing a user's workout history. Use the session data provided earlier to generate a suggestion for how many reps the user should be doing "
+            f"for their next workout session. Ensure that the generated numbers consider the amount of exercise the user has done previously (if any)."
+            ", consider the reps, errors, duration etc of the previous sessions."
+            f"Generate a number of reps for each of the following exercises: {exercise_list}."
+        )
+        desired_output_format = {exercise: int for exercise in exercise_types}
+        rep_counts_json = ai_assistant.ai_reply_json(prompt,desired_output_format)
+        rep_counts_dict = json.loads(rep_counts_json)
+        
+        reply = {exercise: rep_counts_dict.get(exercise, 0) for exercise in exercise_types}
+        
+        return JsonResponse({"feedback_message": reply})
+    except User.DoesNotExist:
+        return JsonResponse({"error": f"User with id {user_id} does not exist"}, status=404)
+    except Exception as e:
+        print(e)
+        return JsonResponse({"error": "Internal server error"}, status=500)
