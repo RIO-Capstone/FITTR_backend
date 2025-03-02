@@ -39,7 +39,8 @@ class User(models.Model):
         else:
             return today.year - born.year
     def get_bmi(self):
-        return # TODO
+        height_meters = self.height/100
+        return self.weight/(height_meters**2)
     class Meta:
         app_label = 'FITTR_API'
 

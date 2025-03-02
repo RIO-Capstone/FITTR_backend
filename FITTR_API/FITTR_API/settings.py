@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+from huey import RedisHuey
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -38,7 +39,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'channels',
-    'FITTR_API'
+    'FITTR_API',
+    "huey.contrib.djhuey"  # Use this for Django integration
 ]
 
 MIDDLEWARE = [
@@ -135,7 +137,37 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # settings.py
 
-# Celery configuration
-CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Redis running locally
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
+#
+
+Q_CLUSTER = {
+    'name': 'DjangoQ',
+    'orm': 'default',
+    'timeout': 60,
+    'retry': 60,
+    'queue_limit': 10,
+    'bulk': 10,
+}
+
+
+# settings.py
+
+
+# settings.py
+# settings.py
+
+from huey import RedisHuey
+
+HUEY = {
+    'huey_class': 'huey.RedisHuey',  # Use Redis for the backend
+    'name': 'fittr_huey',  # Queue name
+    'results': True,  # Store task results
+    'store_none': False,  # Don't store results if None
+    'immediate': False,  # Run tasks asynchronously
+    'utc': True,  # Use UTC time for scheduling
+    'blocking': True,  # Block until Redis is available
+    'connection': {
+        'host': 'localhost',  # Ensure Redis is running on this host
+        'port': 6379,         # Default Redis port
+        'db': 0,              # Use database 0
+    },
+}

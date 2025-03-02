@@ -81,63 +81,6 @@ def spread_record(record:pd.Series) -> pd.Series:
 def min_max_scaler(col:pd.Series,min_value,max_value)->pd.Series:
         return col.map(lambda x: (x-min_value)/(max_value-min_value))
 
-def smooth_gaussian_live(record: pd.Series, window_data: pd.DataFrame, sigma: float = 2, window_size: int = 30) -> pd.Series:
-    """
-    Apply Gaussian smoothing to a live stream without affecting past smoothed values.
-
-    Parameters:
-    - record: pd.Series, the current live data point.
-    - window_data: pd.DataFrame, past raw data points (not smoothed).
-    - sigma: float, standard deviation of the Gaussian kernel.
-    - window_size: int, size of the smoothing window.
-
-    Returns:
-    - pd.Series: Smoothed version of the current record.
-    """
-    # Append current record to the window data
-    window_data = pd.concat([window_data, record.to_frame().T], axis=0)
-    
-    # Ensure window size limit
-    window_data = window_data.iloc[-window_size:]
-    
-    # Apply Gaussian kernel
-    kernel_radius = int(3 * sigma)
-    x = np.arange(-kernel_radius, kernel_radius + 1)
-    gaussian_kernel = np.exp(-x**2 / (2 * sigma**2))
-    gaussian_kernel /= gaussian_kernel.sum()  # Normalize kernel
-
-    # Apply Gaussian smoothing on each column separately
-    smoothed_values = {}
-    for column in window_data.columns:
-        padded_column = np.pad(window_data[column].values, (kernel_radius, 0), mode='constant')
-        convolved_column = np.convolve(padded_column, gaussian_kernel, mode='valid')
-        smoothed_values[column] = convolved_column[-1]  # Take the latest smoothed value
-
-    # Return as a Series with the same index as the current record
-    return pd.Series(smoothed_values, index=record.index)
-
-def smooth_gaussian(data:pd.Series, sigma=2)->pd.Series:
-    """
-    Smoothen the curves using a Gaussian filter.
-    Parameters:
-    - data: NumPy array, the input signal to smooth.
-    - sigma: Standard deviation of the Gaussian kernel.
-    Returns:
-    - smoothed_data: NumPy array of the smoothed data.
-    """
-    kernel_radius = int(3 * sigma)  # 3 standard deviations cover ~99% of data
-    x = np.arange(-kernel_radius, kernel_radius + 1)
-    gaussian_kernel = np.exp(-x**2 / (2 * sigma**2))
-    gaussian_kernel /= gaussian_kernel.sum()  # Normalize the kernel
-    
-    # Padding to avoid edge effects
-    padded_data = np.pad(data, pad_width=kernel_radius, mode='symmetric')
-    
-    # Convolution with Gaussian kernel
-    smoothed_data = np.convolve(padded_data, gaussian_kernel, mode='valid')
-    
-    return pd.Series(smoothed_data,index=data.index)
-
 def calculate_angle(joint_a, joint_b, joint_c):
     """
     Calculate the angle between three joints in 3D space using numpy.
@@ -213,7 +156,7 @@ def joint_angles_per_record(record, joints):
 
 def exercise_to_algo_map(exercise_type:str)->Callable:
     if exercise_type == ExerciseType.SQUATS:
-        return squat_reps
+        return squat_rep_factory_function()
     elif exercise_type == ExerciseType.LEFT_BICEP_CURLS:
         return left_bicep_curl_reps
     elif exercise_type == ExerciseType.RIGHT_BICEP_CURLS:
@@ -221,22 +164,22 @@ def exercise_to_algo_map(exercise_type:str)->Callable:
     else:
         pass
 
-def squat_reps(current_record:pd.Series,past_record:pd.Series | None)->int:
-    if past_record is None or past_record.empty: return 0
-    angle_threshold = ExerciseType.SQUATS_THRESHOLD
-    # if "RIGHT_KNEE_z" not in current_record.index:
-    #      return 0
-    # if current_record["RIGHT_KNEE_z"] <= thr and past_record["RIGHT_KNEE_z"] > thr:
-    #     return 1
-    # else:
-    #     return 0
-    if "LEFT_ANGLE" not in current_record.index or "RIGHT_ANGLE" not in current_record.index:
-         return 0
-    left_check = current_record["LEFT_ANGLE"] >= angle_threshold and past_record["LEFT_ANGLE"] < angle_threshold
-    right_check = current_record["RIGHT_ANGLE"] >= angle_threshold and past_record["RIGHT_ANGLE"] < angle_threshold
-    if left_check and right_check:
-        return 1
-    return 0
+def squat_rep_factory_function()->Callable:
+    SQUATTING = False
+    def squat_reps(current_record:pd.Series,past_record:pd.Series|None = None)->int:
+        nonlocal SQUATTING # using SQUATTING as almost a global variable
+        angle_threshold = ExerciseType.SQUATS_THRESHOLD
+        if "LEFT_ANGLE" not in current_record.index or "RIGHT_ANGLE" not in current_record.index:
+            return 0
+        TEMP_SQUAT_STATE = current_record["LEFT_ANGLE"] >= angle_threshold and current_record["RIGHT_ANGLE"] >= angle_threshold
+        if TEMP_SQUAT_STATE and SQUATTING == False:
+            SQUATTING = True
+            return 1
+        elif current_record["LEFT_ANGLE"] < angle_threshold and current_record["RIGHT_ANGLE"] < angle_threshold and SQUATTING:
+            SQUATTING = False
+            return 0
+        return 0
+    return squat_reps
     
 def left_bicep_curl_reps(current_record:pd.Series,past_record:pd.Series|None)->int:
     if past_record is None or past_record.empty: return 0
@@ -250,7 +193,7 @@ def right_bicep_curl_reps(current_record:pd.Series,past_record:pd.Series|None)->
     if past_record is None or past_record.empty: return 0
     thr = ExerciseType.RIGHT_BICEP_CURLS_THRESHOLD
     if "RIGHT_INDEX" not in current_record.index: return 0
-    if current_record["RIGHT_INDEX"] >= thr and past_record["RIGHT_INDEX"] < thr:
+    if current_record["RIGHT_INDEX"] <= thr and past_record["RIGHT_INDEX"] > thr:
         return 1
     return 0
     
@@ -269,26 +212,13 @@ def get_relevant_squat_joints(record: pd.Series) -> pd.Series:
     Drops data that isn't relevent for Squats.
     """
     return record[["LEFT_HIP", "LEFT_KNEE", "LEFT_ANKLE","RIGHT_HIP", "RIGHT_KNEE", "RIGHT_ANKLE"]]
-    # prefixes_to_drop = [
-    #     'NOSE', 'LEFT_EYE', 'RIGHT_EYE', 'LEFT_EAR', 'RIGHT_EAR',
-    #     'MOUTH', 'LEFT_SHOULDER', 'RIGHT_SHOULDER', 'LEFT_ELBOW', 'RIGHT_ELBOW',
-    #     'LEFT_WRIST', 'RIGHT_WRIST', 'LEFT_PINKY', 'RIGHT_PINKY', 'LEFT_INDEX',
-    #     'RIGHT_INDEX', 'LEFT_THUMB', 'RIGHT_THUMB', 'LEFT_ANKLE', 'RIGHT_ANKLE',
-    #     'LEFT_HEEL', 'RIGHT_HEEL', 'LEFT_FOOT_INDEX', 'RIGHT_FOOT_INDEX'
-    # ]
-    # prefixes_to_drop = [
-    #     'NOSE', 'LEFT_EYE', 'RIGHT_EYE', 'LEFT_EAR', 'RIGHT_EAR',
-    #     'MOUTH', 'LEFT_ELBOW', 'RIGHT_ELBOW',
-    #     'LEFT_WRIST', 'RIGHT_WRIST', 'LEFT_PINKY', 'RIGHT_PINKY', 'LEFT_INDEX',
-    #     'RIGHT_INDEX', 'LEFT_THUMB', 'RIGHT_THUMB',
-    #     'LEFT_HEEL', 'RIGHT_HEEL', 'LEFT_FOOT_INDEX', 'RIGHT_FOOT_INDEX'
-    # ]
-    
-    # # Identify columns to drop based on prefixes
-    # columns_to_drop = [col for col in record.index if any(col.startswith(prefix) for prefix in prefixes_to_drop)]
-    # return record.drop(columns_to_drop)
 
 def get_left_bicep_curl_joints(record:pd.Series) -> pd.Series:
     return record[["LEFT_INDEX"]]
 def get_right_bicep_curl_joints(record:pd.Series) -> pd.Series:
     return record[["RIGHT_INDEX"]]
+
+def ema_smoothing(current_record:pd.Series,past_record:pd.Series,alpha=0.5)->pd.Series:
+    if past_record is None or past_record.empty:
+        return current_record
+    return alpha * current_record + (1 - alpha) * past_record

@@ -194,8 +194,6 @@ def get_user_history(request,id):
         print(e)
         return JsonResponse({"error": "Server Error", "message": str(e)}, status=500)
 
-
-
 def format_date_with_suffix(date_obj)->str:
     # Helper function to get the ordinal suffix
     def get_ordinal_suffix(day):
