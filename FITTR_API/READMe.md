@@ -15,5 +15,16 @@ User must be in the same directory as the manage.py file.
 SET exercise_initialize_uuid = 'new_uuid_value'
 WHERE id = <product_id>;>
 
-## Updating requirements.txt
+## Updating requirements.txt for the environment
 pip list --format=freeze > requirements.txt
+
+## Updating requirements.txt for Django project
+1) Ensure that you're in the FITTR_API directory
+2) Run: pipreqs --force ./ (this should overrite any existing requirements.txt file and only produce Django project specific dependencies)
+
+## Docker commands
+### Building with docker
+1) Ensure that you're in Dockerfile directory
+2) Run: docker build --tag backend_service:v1 .
+### Running the container
+1) Run: docker run -d -p 8000:8000 --name FITTR_Backend backend_service:v1 
