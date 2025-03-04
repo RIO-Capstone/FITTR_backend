@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 from huey import RedisHuey
+from redis import ConnectionPool
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -134,40 +135,26 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-
-# settings.py
-
-#
-
-Q_CLUSTER = {
-    'name': 'DjangoQ',
-    'orm': 'default',
-    'timeout': 60,
-    'retry': 60,
-    'queue_limit': 10,
-    'bulk': 10,
-}
-
-
-# settings.py
-
-
-# settings.py
-# settings.py
-
-from huey import RedisHuey
+pool = ConnectionPool(host='localhost', port=6379, db=0)
 
 HUEY = {
-    'huey_class': 'huey.RedisHuey',  # Use Redis for the backend
-    'name': 'fittr_huey',  # Queue name
-    'results': True,  # Store task results
-    'store_none': False,  # Don't store results if None
-    'immediate': False,  # Run tasks asynchronously
-    'utc': True,  # Use UTC time for scheduling
-    'blocking': True,  # Block until Redis is available
-    'connection': {
-        'host': 'localhost',  # Ensure Redis is running on this host
-        'port': 6379,         # Default Redis port
-        'db': 0,              # Use database 0
-    },
+    'huey_class': 'huey.RedisHuey',  # Ensure it's correctly recognized
+    'name': 'fittr_huey',
+    'results': True,
+    'store_none': False,
+    'immediate': False,  # Ensures async execution
+    'utc': True,
+    'blocking': True,
+    'connection': {'connection_pool': pool},  # Use Redis connection pooling
+    'consumer': {
+        'workers': 2,  # Increase if necessary
+        'worker_type': 'thread',
+        'initial_delay': 0.1,
+        'backoff': 1.15,
+        'max_delay': 10.0,
+        'scheduler_interval': 1,
+        'periodic': True,
+        'check_worker_health': True,
+        'health_check_interval': 2,
+    }
 }

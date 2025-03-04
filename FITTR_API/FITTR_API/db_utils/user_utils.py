@@ -9,7 +9,7 @@ import json
 from datetime import datetime, timedelta
 import math
 
-@csrf_exempt # Cross-Site Request Forgery (CSRF)
+@csrf_exempt # Cross-Site Request Forgery (CSRF) for API endpoints
 @require_http_methods(["POST"])
 def login_user(request):
     try:
@@ -140,58 +140,6 @@ def get_user(request, id):
     except User.DoesNotExist:
         return JsonResponse({"error": "User not found."}, status=404)
     except Exception as e:
-        return JsonResponse({"error": "Server Error", "message": str(e)}, status=500)
-
-@csrf_exempt
-@require_http_methods(["GET"])
-def get_user_history(request,id):
-    try:
-        # filter out all the exercise sessions that belong to this user
-        # sort them based on date and calculate streak
-        # TODO: Once a user completes an exercise session, this function needs to be called again to update the UI
-        unique_dates = (
-            ExerciseSession.objects.filter(user_id=id)
-            .annotate(date_only=F('created_at__date'))
-            .values_list('date_only', flat=True)
-            .distinct()
-            .order_by('-date_only') # '-' means descending order
-        )
-        curr = unique_dates.first()
-        one_day = timedelta(days=1)
-        today = datetime.now().date()
-        yesterday = today-one_day
-        streak = 0
-        # if curr isn't yesterday or today means the streak broke, no need for streak calculation
-        if curr and (curr == today or curr == yesterday):
-            streak += 1
-            curr -= one_day
-            for i in range(1,len(unique_dates)):
-                if unique_dates[i] == curr:
-                    streak += 1
-                    curr -= one_day
-        # sessions in the last 5 days (HARD CODED)
-        # TODO: Future improvement could introduce a filter parameter in the endpoint for dynamic querying
-        five_days_ago = today-timedelta(days=5)
-        sessions_in_last_5_days = ExerciseSession.objects.filter(
-            user_id=id, created_at__date__gte=five_days_ago
-        ).order_by('-created_at')
-        # just returning the duration of the exercise
-        # TODO: Could work out logic for calculating exercise accuracy in the future (based on reps/errors)
-        session_data = [
-            {
-                "duration": math.ceil(session.duration/60), # seconds to minutes
-                "date":format_date_with_suffix(session.created_at)
-            }
-            for session in sessions_in_last_5_days
-        ]
-        return JsonResponse({"streak":streak,"session_data":session_data})
-            
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON format."}, status=400)
-    except User.DoesNotExist:
-        return JsonResponse({"error":"User not found"},status=404)
-    except Exception as e:
-        print(e)
         return JsonResponse({"error": "Server Error", "message": str(e)}, status=500)
 
 def format_date_with_suffix(date_obj)->str:

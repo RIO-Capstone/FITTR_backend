@@ -10,16 +10,13 @@ import os
 from mistralai import Mistral
 from typing import List, Mapping
 from ..ExerciseType import ExerciseType
-from ..tasks import generate_ai_feedback, generate_rep_suggestions
-
-
+from huey.contrib import djhuey as huey
 
 load_dotenv()
 
 class AIAssistant:
     def __init__(self, user: User):
         self.api_key = os.getenv('MISTRAL_API_KEY')
-        print("API Key:", self.api_key)
         self.model_name = "mistral-large-latest"
         self.client = Mistral(api_key=self.api_key)
         self.history = [{"role": "system", "content": "You are a fitness AI assistant. Keep your responses short and concise."}]
@@ -35,7 +32,7 @@ class AIAssistant:
                 "duration": session["duration"],
                 "reps": session["reps"],
                 "errors": session["errors"],
-                "created_at": session["created_at"],
+                "created_at": session["created_at"].strftime("%d-%m-%Y %H:%M:%S"),
             })
 
         return json.dumps({
@@ -108,110 +105,6 @@ class AIAssistant:
 
         return reply
 
-    def extract_numeric_value(self,text):
-        """
-        Extracts the first numeric value from a text response.
-        If no number is found, it defaults to 0.
-        """
-        match = re.search(r"\d+", text)
-        return int(match.group()) if match else 0
-
-
-
-
-    # views.py
-
-
-
-    @csrf_exempt
-    @require_http_methods(["GET"])
-    def get_ai_feedback(request, user_id):
-        """
-        API endpoint to get AI-generated feedback.
-        This will now use Huey to run the task asynchronously.
-        """
-        user = get_object_or_404(User, id=user_id)
-
-        user_sessions = [
-            {"exercise_type": "push-up", "duration": 30, "reps": 15, "errors": 1, "created_at": "2025-02-16 10:00:00"},
-            {"exercise_type": "squat", "duration": 40, "reps": 20, "errors": 0, "created_at": "2025-02-16 10:05:00"}
-        ]  # Dummy data for now
-
-        # Enqueue the task to generate AI feedback
-        feedback_task = generate_ai_feedback(user_id=user.id, session_data=user_sessions)
-
-        return JsonResponse({"message": "Feedback generation in progress. You'll receive a response shortly."})
-    
-
-    @csrf_exempt
-    @require_http_methods(["POST"])
-    def get_feedback_on_latest_exercise_session(request):
-        try:
-            # get the exercise session data from the App and return some feedback
-            session_data = json.loads(request.body)
-            print("Session data received: ", session_data)
-            required_fields = [
-                "user_id",
-                "rep_count",
-                "duration",
-                "errors",
-                "created_at", # should be the same format as the Exercise Session object created in the web socket connection
-                "exercise_type"
-            ]
-            for field in required_fields:
-                if field not in session_data:
-                    return JsonResponse({"error":f"Field {field} is missing for single session feedback"},500)
-            user_id = session_data['user_id']
-            user = User.objects.get(id=user_id)
-            ai_assistant = SingletonAIAssistant.get_instance(user=user)
-            session_data["duration"] = str(session_data["duration"]) + " seconds"
-            full_prompt = (
-                f"You are a personal trainer analyzing a user's workout session. Use the session data provided to \
-                give specific and actionable advice for improving future workouts in an encouraging way."
-                f"Here is the session data:\n"
-                f"{json.dumps(session_data)}"
-            )
-            output_format = {"feedback_message":str}
-            feedback_response = ai_assistant.ai_reply_json(prompt=full_prompt,desired_output_format=output_format)
-            feedback_json = json.loads(feedback_response)
-            feedback = feedback_json.get("feedback_message")
-            return JsonResponse({"feedback_message":feedback})
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON format."}, status=400)
-        except User.DoesNotExist:
-            return JsonResponse({"error":f"User does not exist!"},404)
-        except Exception as e:
-            print(e)
-            return JsonResponse({"error":"Internal server error"},500)
-        
-    @csrf_exempt
-    @require_http_methods(["GET"])
-    def get_ai_rep_generation(request, user_id):
-        try:
-            user = User.objects.get(id=user_id)
-            ai_assistant = SingletonAIAssistant.get_instance(user)
-            
-            # Dynamically get all exercise types from the ExerciseType enum
-            exercise_types = [attr for attr in dir(ExerciseType) if not callable(getattr(ExerciseType, attr)) and not attr.startswith("__") and not attr.endswith("_THRESHOLD")]
-            exercise_list = ", ".join(exercise_types)
-            
-            prompt = (
-                f"You are a personal trainer analyzing a user's workout history. Use the session data provided earlier to generate a suggestion for how many reps the user should be doing "
-                f"for their next workout session. Ensure that the generated numbers consider the amount of exercise the user has done previously (if any)."
-                ", consider the reps, errors, duration etc of the previous sessions."
-                f"Generate a number of reps for each of the following exercises: {exercise_list}."
-            )
-            
-            # Enqueue the task to generate rep suggestions
-            rep_suggestions_task = generate_rep_suggestions(user_id=user.id)
-
-            return JsonResponse({"message": "Rep suggestion generation in progress. You'll receive a response shortly."})
-        except User.DoesNotExist:
-            return JsonResponse({"error": f"User with id {user_id} does not exist"}, status=404)
-        except Exception as e:
-            print(e)
-            return JsonResponse({"error": "Internal server error"}, status=500)
-
 class SingletonAIAssistant:
         _instances : Mapping[int,AIAssistant] = {}
         @staticmethod
@@ -219,3 +112,130 @@ class SingletonAIAssistant:
             if user.id not in SingletonAIAssistant._instances:
                 SingletonAIAssistant._instances[user.id] = AIAssistant(user)
             return SingletonAIAssistant._instances[user.id]
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def get_ai_feedback(request, user_id):
+    """
+    API endpoint to get AI-generated feedback.
+    """
+    try:
+        feedback_json = task_ai_feedback(user_id)(blocking=True, timeout=5)  # Blocking task
+        return JsonResponse({"user_id":user_id,"feedback_message": feedback_json}, status=200)
+    except Exception as e:
+        print(e)
+        return JsonResponse({"error": "Internal server error"}, status=500)
+
+@huey.task()
+def task_ai_feedback(user_id):
+    try:
+        # Fetch user and session data
+        user = User.objects.get(id=user_id)
+        user_sessions = ExerciseSession.objects.filter(user_id=user_id).values('exercise_type', 'duration', 'reps', 'errors', 'created_at')
+
+        if not user_sessions:
+            print(f"No sessions found for user {user_id}")
+            return
+
+        print(f"Generating feedback for user {user_id}...")
+
+        ai_assistant = SingletonAIAssistant.get_instance(user)
+        feedback = ai_assistant.generate_texts(user_sessions)
+
+        # You can log the feedback to the database or notify the user
+        print(f"Queue Task complete for user {user_id} for dashboard feedback")
+        return feedback
+
+    except User.DoesNotExist:
+        print(f"QUEUE EXCEPTION: User with ID {user_id} does not exist.")
+    except Exception as e:
+        print(e)
+        print(f"Error generating AI feedback for user {user_id}: {str(e)}")
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def get_feedback_on_latest_exercise_session(request):
+    try:
+        # get the exercise session data from the App and return some feedback
+        session_data = json.loads(request.body)
+        print("Session data received: ", session_data)
+        required_fields = [
+            "user_id",
+            "rep_count",
+            "duration",
+            "errors",
+            "created_at", # should be the same format as the Exercise Session object created in the web socket connection
+            "exercise_type"
+        ]
+        for field in required_fields:
+            if field not in session_data:
+                return JsonResponse({"error":f"Field {field} is missing for single session feedback"},500)
+            # QUEUE AND BEGIN TASK
+        feedback = task_feedback_on_latest_exercise_session(session_data)(blocking=True, timeout=5)
+        return JsonResponse({"feedback_message":feedback})
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON format."}, status=400)
+    except Exception as e:
+        print(e)
+        return JsonResponse({"error":"Internal server error"},500)
+    
+@huey.task()
+def task_feedback_on_latest_exercise_session(session_data):
+    try:
+        user_id = session_data['user_id']
+        user = User.objects.get(id=user_id)
+        ai_assistant = SingletonAIAssistant.get_instance(user=user)
+        session_data["duration"] = str(session_data["duration"]) + " seconds"
+        full_prompt = (
+            f"You are a personal trainer analyzing a user's workout session. Use the session data provided to \
+            give specific and actionable advice for improving future workouts in an encouraging way."
+            f"Here is the session data:\n"
+            f"{json.dumps(session_data)}"
+        )
+        output_format = {"feedback_message":str}
+        feedback_response = ai_assistant.ai_reply_json(prompt=full_prompt,desired_output_format=output_format)
+        feedback_json = json.loads(feedback_response)
+        feedback = feedback_json.get("feedback_message","")
+        return feedback
+    except User.DoesNotExist:
+        print("User does not exist!")
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def get_ai_rep_generation(request, user_id):
+    try:
+        rep_counts_json = process_ai_rep_generation(user_id)(blocking=True, timeout=5) # Blocking call for 5 seconds
+        print(f"Queue task completed with response: {rep_counts_json}")
+        return JsonResponse({"feedback_message":rep_counts_json})
+    except Exception as e:
+        print(e)
+        return JsonResponse({"error": "Internal server error"}, status=500)
+
+@huey.task()
+def process_ai_rep_generation(user_id):
+    try:
+        user = User.objects.get(id=user_id)
+        ai_assistant = SingletonAIAssistant.get_instance(user)
+        
+        exercise_types = [attr for attr in dir(ExerciseType) if not callable(getattr(ExerciseType, attr)) and not attr.startswith("__") and not attr.endswith("_THRESHOLD")]
+        exercise_list = ", ".join(exercise_types)
+        
+        prompt = (
+            f"You are a personal trainer analyzing a user's workout history..."
+            f"Generate a number of reps for each of the following exercises: {exercise_list}."
+        )
+        
+        desired_output_format = {exercise: int for exercise in exercise_types}
+        rep_counts_json = ai_assistant.ai_reply_json(prompt, desired_output_format)
+        rep_counts_dict = json.loads(rep_counts_json)
+        
+        reply = {exercise: rep_counts_dict.get(exercise, 0) for exercise in exercise_types}
+
+        return reply  # No JSON response inside a task
+    
+    except User.DoesNotExist:
+        return {"error": f"User with id {user_id} does not exist"}
+    
+    except Exception as e:
+        return {"error": "Internal server error"}
+

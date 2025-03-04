@@ -14,3 +14,6 @@ User must be in the same directory as the manage.py file.
 <UPDATE FITTR_API_product
 SET exercise_initialize_uuid = 'new_uuid_value'
 WHERE id = <product_id>;>
+
+## Updating requirements.txt
+pip list --format=freeze > requirements.txt
