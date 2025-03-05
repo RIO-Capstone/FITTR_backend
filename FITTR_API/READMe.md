@@ -7,6 +7,8 @@ This document provides instructions for setting up, running, and managing the FI
 ## 🚀 Running the Server
 Ensure you are in the same directory as the `compose.yaml` file before running the server.
 
+Before running the server, make sure you have set up Docker properly by following the [Docker Instructions](#-docker-instructions) section.
+
 **Run the server with:**
 ```sh
 docker compose up -d --build
@@ -68,38 +70,22 @@ pip list --format=freeze > requirements.txt
 
 ---
 
-## 🐳 Installing Docker
+## 🏗️ Docker Instructions
+### 1️⃣ Installing Docker 🐳
 Follow the installation instructions for your system:
 [Docker Windows Install](https://docs.docker.com/desktop/setup/install/windows-install/)
 
----
-
-## 🏗️ Docker Commands
-### Getting the Redis:latest Image
-Redis image website: [Docker Redis](https://hub.docker.com/_/redis)
+### 2️⃣ Getting the latest Redis Image
+1. Pull the Redis Image [Docker Redis](https://hub.docker.com/_/redis)
 ```sh
 docker pull redis
 ```
 
-
-### Building with Docker
-1. Navigate to the directory containing the `Dockerfile`.
-2. Build the Docker image:
+### 3️⃣ Building & Launching Docker Compose
+1. To build and start all services using `docker-compose`:
    ```sh
-   docker build --tag backend_service:v1 .
+   docker compose up -d --build
    ```
-
-### Running the Container
-Run the container and expose it on port `8000`:
-```sh
-docker run -d -p 8000:8000 --name FITTR_Backend backend_service:v1
-```
-
-### Building & Launching Docker Compose
-To build and start all services using `docker-compose`:
-```sh
-docker compose up -d --build
-```
 
 ---
 
