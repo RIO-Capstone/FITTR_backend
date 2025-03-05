@@ -19,9 +19,19 @@ class AIAssistant:
         self.api_key = os.getenv('MISTRAL_API_KEY')
         self.model_name = "mistral-large-latest"
         self.client = Mistral(api_key=self.api_key)
-        self.history = [{"role": "system", "content": "You are a fitness AI assistant. Keep your responses short and concise."}]
+        greeting = "Ms." if user.gender == "female" else "Mr."
+        fitness_desc = self.getPersonaDescription(user.fitness_goal)
+        bmr_description = user.get_bmr_description()
+        bmi_description = user.get_bmi_description()
+        self.history = [{"role": "system", 
+                        "content": 
+                        f"You are a personal fitness assistant for {greeting} {user.first_name}. {user.first_name} \
+                        is {user.get_age()} years old and has the fitness goal of {fitness_desc}. \
+                        {user.first_name} has a weight of {user.weight} kg and height of {user.height} meters. \
+                        In terms of BMI, {user.first_name} is {bmi_description} and in terms of BMR {user.first_name} has {bmr_description} \
+                        Use the information about {user.first_name} to provide fitness advice. "}]
 
-    def populate_context(self, data:List[ExerciseSession]) -> None:
+    def populate_context(self, data:List[ExerciseSession]) -> str:
         """
         Formats exercise session data into structured context.
         """
@@ -38,49 +48,6 @@ class AIAssistant:
         return json.dumps({
             "user_sessions": sessions
         }, indent=4)
-
-    def generate_texts(self, data) -> dict:
-        context = self.populate_context(data)
-
-        prompt = (
-            "You are a personal trainer analyzing a user's workout history. Based on the following session data, "
-            "provide a JSON response with these fields: \n"
-            "- summary_advice: A concise summary of the user's workout performance and key takeaways.\n"
-            "- summary_analysis: An analysis of workout trends, improvements, and areas needing attention.\n"
-            "- future_advice: Specific and actionable advice for improving future workouts.\n"
-            "- form_score: An integer between 1-100 representing the user's form score.\n"
-            "- stability_score: An integer between 1-100 representing the user's stability score.\n"
-            "- range_of_motion_score: An integer between 1-100 representing the user's range of motion score.\n"
-            "Return only valid JSON with these fields and nothing else.\n"
-            f"Here is the session data:\n{context}"
-        )
-
-        self.history.append({"role": "user", "content": prompt})
-
-        aiResponseObject = self.client.chat.complete(model=self.model_name, messages=self.history)
-        reply = aiResponseObject.choices[0].message.content.strip()
-        print("AI Response:", reply)
-
-        self.history.append({"role": "assistant", "content": reply})
-
-        # Extract JSON content if wrapped in triple backticks
-        json_match = re.search(r"```json\s*(\{.*?\})\s*```", reply, re.S)
-        if json_match:
-            reply = json_match.group(1)
-
-        try:
-            return json.loads(reply)
-        except json.JSONDecodeError:
-            print("Error decoding JSON response.")
-            return {
-        
-                "summary_advice": "Error generating advice.",
-                "summary_analysis": "Error generating analysis.",
-                "future_advice": "Error generating future advice.",
-                "form_score": 0,
-                "stability_score": 0,
-                "range_of_motion_score": 0
-            }
 
     def ai_reply_json(self, prompt: str, desired_output_format: dict) -> str:
 
@@ -104,6 +71,18 @@ class AIAssistant:
         self.history.append({"role": "assistant", "content": reply})
 
         return reply
+    
+    def getPersonaDescription(self,persona:str)->str:
+        # ensure consistency with the persona profiles in the app
+        fitnessGoalToDescription = {
+            "Strength Seeker": "focused on improving overall strength and endurance through progressive overload in bodyweight and resistance exercises, such as push-ups, pull-ups, and compound lifts.",
+            "Muscle Sculptor": "aims to build muscle definition and hypertrophy in targeted muscle groups by following a structured weight training program with progressive overload, proper recovery, and optimized nutrition.",
+            "Lean Machine":"aims to lose fat and gain muscle mass through a combination of strength training, and a balanced diet to achieve a lean and toned physique.",
+        }
+        if persona in fitnessGoalToDescription:
+            return fitnessGoalToDescription[persona]
+        else:
+            return "undecided"
 
 class SingletonAIAssistant:
         _instances : Mapping[int,AIAssistant] = {}
@@ -120,7 +99,7 @@ def get_ai_feedback(request, user_id):
     API endpoint to get AI-generated feedback.
     """
     try:
-        feedback_json = task_ai_feedback(user_id)(blocking=True, timeout=5)  # Blocking task
+        feedback_json = task_ai_feedback(user_id)(blocking=True, timeout=10)  # Blocking task
         return JsonResponse({"user_id":user_id,"feedback_message": feedback_json}, status=200)
     except Exception as e:
         print(e)
@@ -138,13 +117,34 @@ def task_ai_feedback(user_id):
             return
 
         print(f"Generating feedback for user {user_id}...")
-
         ai_assistant = SingletonAIAssistant.get_instance(user)
-        feedback = ai_assistant.generate_texts(user_sessions)
-
+        context = ai_assistant.populate_context(user_sessions)
+        desired_output_format = {
+            "summary_advice": str,
+            "summary_analysis": str,
+            "future_advice": str,
+            "form_score": int,
+            "stability_score": int,
+            "range_of_motion_score": int
+        }
+        prompt = (
+            "You are a personal trainer analyzing a user's workout history. Based on the following session data, "
+            "provide a JSON response with these fields: \n"
+            "- summary_advice: A concise summary of the user's workout performance and key takeaways.\n"
+            "- summary_analysis: An analysis of workout trends, improvements, and areas needing attention.\n"
+            "- future_advice: Specific and actionable advice for improving future workouts.\n"
+            "- form_score: An integer between 1-100 representing the user's form score.\n"
+            "- stability_score: An integer between 1-100 representing the user's stability score.\n"
+            "- range_of_motion_score: An integer between 1-100 representing the user's range of motion score.\n"
+            "Return a valid JSON response.\n"
+            f"Here is the session data:\n{context}"
+        )
+        
+        feedback_str = ai_assistant.ai_reply_json(prompt, desired_output_format)
+        feedback_json = json.loads(feedback_str)
         # You can log the feedback to the database or notify the user
         print(f"Queue Task complete for user {user_id} for dashboard feedback")
-        return feedback
+        return feedback_json
 
     except User.DoesNotExist:
         print(f"QUEUE EXCEPTION: User with ID {user_id} does not exist.")

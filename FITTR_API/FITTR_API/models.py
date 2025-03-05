@@ -41,6 +41,33 @@ class User(models.Model):
     def get_bmi(self):
         height_meters = self.height/100
         return self.weight/(height_meters**2)
+    def get_bmr(self):
+        if self.gender.lower() == 'male':
+            bmr = 88.362 + (13.397 * self.weight) + (4.799 * self.height) - (5.677 * self.get_age())
+        elif self.gender.lower() == 'female':
+            bmr = 447.593 + (9.247 * self.weight) + (3.098 * self.height) - (4.330 * self.get_age())
+        else:
+            bmr = 0  # Default to 0 if gender is not specified correctly
+        return bmr
+    def get_bmi_description(self):
+        bmi = self.get_bmi()
+        if bmi < 18.5:
+            return f"Underweight (BMI: {bmi:.2f})"
+        elif 18.5 <= bmi < 22.9:
+            return f"Normal weight (BMI: {bmi:.2f})"
+        elif 23 <= bmi < 27.4:
+            return f"Overweight (BMI: {bmi:.2f})"
+        else:
+            return f"Obese (BMI: {bmi:.2f})"
+    def get_bmr_description(self):
+        bmr = self.get_bmr()
+        if bmr == 0: return "Undefined bmr. Do not use bmr value as context"
+        if bmr < 1200:
+            return f"Below optimal BMR (BMR: {bmr:.2f})"
+        elif 1200 <= bmr < 1800:
+            return f"Optimal BMR (BMR: {bmr:.2f})"
+        else:
+            return f"Above optimal BMR (BMR: {bmr:.2f})"
     class Meta:
         app_label = 'FITTR_API'
 
