@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from django.http import JsonResponse
-from .db_utils.user_utils import register_user, get_all_users, get_user, login_user, get_user_history
+from .db_utils.user_utils import register_user, get_all_users, get_user, login_user
 from .db_utils.product_utils import register_product, get_all_products, get_product
 from .ai_utils.ai_assistant import get_ai_feedback, get_feedback_on_latest_exercise_session, get_ai_rep_generation
 
@@ -18,7 +18,6 @@ user_paths = [
     path('users',get_all_users),
     path('user/<int:id>', get_user),
     path('user/login',login_user),
-    path('user/<int:id>/history',get_user_history),
     path('user/latest_exercise_session_feedback',get_feedback_on_latest_exercise_session),
     path('user/<int:user_id>/ai_rep_generation', get_ai_rep_generation),
     path('user/<int:user_id>/ai_feedback', get_ai_feedback)

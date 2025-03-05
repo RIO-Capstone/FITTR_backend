@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+from huey import RedisHuey
+from redis import ConnectionPool
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -38,7 +40,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'channels',
-    'FITTR_API'
+    'FITTR_API',
+    "huey.contrib.djhuey"  # Use this for Django integration
 ]
 
 MIDDLEWARE = [
@@ -131,3 +134,27 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+pool = ConnectionPool(host='redis', port=6379, db=0)
+
+HUEY = {
+    'huey_class': 'huey.RedisHuey',  # Ensure it's correctly recognized
+    'name': 'fittr_huey',
+    'results': True,
+    'store_none': False,
+    'immediate': False,  # Ensures async execution
+    'utc': True,
+    'blocking': True,
+    'connection': {'connection_pool': pool},  # Use Redis connection pooling
+    'consumer': {
+        'workers': 2,  # Increase if necessary
+        'worker_type': 'thread',
+        'initial_delay': 0.1,
+        'backoff': 1.15,
+        'max_delay': 10.0,
+        'scheduler_interval': 1,
+        'periodic': True,
+        'check_worker_health': True,
+        'health_check_interval': 2,
+    }
+}
