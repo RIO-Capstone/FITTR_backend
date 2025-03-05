@@ -1,30 +1,107 @@
-## Running the server
-Command to run django server: daphne -b 0.0.0.0 -p 8000 FITTR_API.asgi:application
-User must be in the same directory as the manage.py file.
+# FITTR API Backend
 
-## Applying Migrations
-1. First run: python manage.py makemigrations FITTR_API
-2. Then run: python manage.py migrate
-## Querying Sqlite3 Database on CMD
-1. Traverse to the FITTR_API directory (where the database file is)
-2. Command to initialize session: sqlite3  db.sqlite3
-3. Command to get a list of all the tables in the database: .tables
-4. SQL Query <SELECT * FROM FITTR_API_user;>
-<h5>Example edit query</h5>
-<UPDATE FITTR_API_product
-SET exercise_initialize_uuid = 'new_uuid_value'
-WHERE id = <product_id>;>
+This document provides instructions for setting up, running, and managing the FITTR API backend using Docker and Django.
 
-## Updating requirements.txt for the environment
+---
+
+## 🚀 Running the Server
+Ensure you are in the same directory as the `compose.yaml` file before running the server.
+
+**Run the server with:**
+```sh
+docker compose up -d --build
+```
+
+---
+
+## 📌 Applying Migrations
+Before running migrations, make sure you are inside the project directory.
+
+1. Generate migrations for the `FITTR_API` app:
+   ```sh
+   python manage.py makemigrations FITTR_API
+   ```
+2. Apply migrations to the database:
+   ```sh
+   python manage.py migrate
+   ```
+
+---
+
+## 🛠 Querying the SQLite Database in CMD
+To interact with the SQLite database directly:
+
+1. Navigate to the `FITTR_API` directory (where `db.sqlite3` is located).
+2. Start an SQLite session:
+   ```sh
+   sqlite3 db.sqlite3
+   ```
+3. List all tables in the database:
+   ```sh
+   .tables
+   ```
+4. Example SQL Query:
+   ```sql
+   SELECT * FROM FITTR_API_user;
+   ```
+5. Example Edit Query:
+   ```sql
+   UPDATE FITTR_API_product
+   SET exercise_initialize_uuid = 'new_uuid_value'
+   WHERE id = <product_id>;
+   ```
+
+---
+
+## 📄 Updating `requirements.txt`
+To update the environment dependencies:
+```sh
 pip list --format=freeze > requirements.txt
+```
 
-## Updating requirements.txt for Django project
-1) Ensure that you're in the FITTR_API directory
-2) Run: pipreqs --force ./ (this should overrite any existing requirements.txt file and only produce Django project specific dependencies)
+### Updating `requirements.txt` for the Django Project
+1. Ensure you are in the `FITTR_API` directory.
+2. Run the following command to update only project-specific dependencies:
+   ```sh
+   pipreqs --force ./
+   ```
 
-## Docker commands
-### Building with docker
-1) Ensure that you're in Dockerfile directory
-2) Run: docker build --tag backend_service:v1 .
-### Running the container
-1) Run: docker run -d -p 8000:8000 --name FITTR_Backend backend_service:v1 
+---
+
+## 🐳 Installing Docker
+Follow the installation instructions for your system:
+[Docker Windows Install](https://docs.docker.com/desktop/setup/install/windows-install/)
+
+---
+
+## 🏗️ Docker Commands
+### Getting the Redis:latest Image
+Redis image website: [Docker Redis](https://hub.docker.com/_/redis)
+```sh
+docker pull redis
+```
+
+
+### Building with Docker
+1. Navigate to the directory containing the `Dockerfile`.
+2. Build the Docker image:
+   ```sh
+   docker build --tag backend_service:v1 .
+   ```
+
+### Running the Container
+Run the container and expose it on port `8000`:
+```sh
+docker run -d -p 8000:8000 --name FITTR_Backend backend_service:v1
+```
+
+### Building & Launching Docker Compose
+To build and start all services using `docker-compose`:
+```sh
+docker compose up -d --build
+```
+
+---
+
+### 🎯 You're all set! 🎯
+

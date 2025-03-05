@@ -135,7 +135,7 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-pool = ConnectionPool(host='localhost', port=6379, db=0)
+pool = ConnectionPool(host='redis', port=6379, db=0)
 
 HUEY = {
     'huey_class': 'huey.RedisHuey',  # Ensure it's correctly recognized
