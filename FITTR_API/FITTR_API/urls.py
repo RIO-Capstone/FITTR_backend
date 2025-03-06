@@ -18,7 +18,6 @@ user_paths = [
     path('users',get_all_users),
     path('user/<int:id>', get_user),
     path('user/login',login_user),
-    path('user/<int:id>/history',get_user_history),
     path('user/latest_exercise_session_feedback',get_feedback_on_latest_exercise_session),
     path('user/<int:user_id>/ai_rep_generation', get_ai_rep_generation),
     path('user/<int:user_id>/ai_feedback', get_ai_feedback),
