@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from django.http import JsonResponse
-from .db_utils.user_utils import register_user, get_all_users, get_user, login_user, get_user_history, get_users_by_product
+from .db_utils.user_utils import register_user, get_all_users, get_user, login_user, get_users_by_product
 from .db_utils.product_utils import register_product, get_all_products, get_product
 from .ai_utils.ai_assistant import get_ai_feedback, get_feedback_on_latest_exercise_session, get_ai_rep_generation
 
