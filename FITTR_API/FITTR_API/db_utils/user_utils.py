@@ -121,6 +121,24 @@ def get_all_users(request):
 
 @csrf_exempt
 @require_http_methods(["GET"])
+def get_users_by_product(request, product_id):
+    try:
+        # Fetch all users with the given product_id_id (column name in the database)
+        users = User.objects.filter(product_id_id=product_id)
+        
+        if not users:
+            return JsonResponse({"error": f"No users found for product ID {product_id}"}, status=404)
+        
+        # Prepare a list of users to return
+        users_list = [{"id": user.id, "full_name": user.first_name + " " + user.last_name} for user in users]
+        
+        return JsonResponse({"users": users_list}, status=200)
+    
+    except Exception as e:
+        return JsonResponse({"error": "Server Error", "message": str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["GET"])
 def get_user(request, id):
     try:
         # Fetch user
