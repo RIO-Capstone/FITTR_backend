@@ -30,5 +30,25 @@ services:
       - redis
       - web
     command: python manage.py run_huey
+
+  # Test service for pytest
+  fittr-api-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: django_app  # Same target as the web service
+    depends_on:
+      - redis
+      - web
+    command: pytest  # Runs tests when this container starts
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - .:/app  # Mounts the app's code for testing
+    # Optional: if you want to persist test logs or results
+    # volumes:
+    #   - ./test_logs:/app/test_logs
+
 volumes:
   redis_data:

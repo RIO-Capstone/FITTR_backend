@@ -1,2 +1,4 @@
 datasets
 FITTR_API/.env
+__pycache__
+*.sqlite3
