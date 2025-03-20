@@ -1,4 +1,6 @@
 import pytest
+from datetime import datetime
+from FITTR_API.db_utils.user_utils import format_date_with_suffix
 
 @pytest.mark.django_db
 def test_login_user(client, user_fixture):
@@ -31,7 +33,19 @@ def test_login_user_fail(client):
     data = response.json()
     assert response.status_code == 401
     assert "error" in data
+
+@pytest.mark.django_db
+def test_login_user_fail(client):
+    payload = dict(
+        email="abcd@123"
+    )
     
+    response = client.post("/user/login", payload, format='json')
+    data = response.json()
+    assert response.status_code == 400
+    assert "error" in data
+        
+
 @pytest.mark.django_db
 def test_register_user(client, product_fixture):
     payload = {
@@ -68,6 +82,54 @@ def test_register_user_fail(client):
     data = response.json()
     assert response.status_code == 400
     assert data["error"].endswith("is required.")
+  
+@pytest.mark.django_db
+def test_register_user_fail2(client, product_fixture):
+    payload = {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "email": "janedoe@example.com",
+        "password": "password123",
+        "weight": 65,
+        "height": 165,
+        "phone_number": "9876543210",
+        "gender": "female",
+        "date_of_birth": "1990-12-12",  # Format: DD-MM-YYYY
+        "product_id": product_fixture.id,
+        "fitness_goal": "muscle_gain"
+    }
+    response = client.post("/user/register", payload, format="json")
+    data = response.json()
+    assert response.status_code == 400
+    assert data["error"].startswith("Invalid date format")
+    
+@pytest.mark.django_db
+def test_register_user_fail3(client, product_fixture):
+    payload = {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "email": "janedoe@example.com",
+        "password": "password123",
+        "weight": 65,
+        "height": 165,
+        "phone_number": "9876543210",
+        "gender": "female",
+        "date_of_birth": "25-12-1995",  # Format: DD-MM-YYYY
+        "product_id": 2,
+        "fitness_goal": "muscle_gain"
+    }
+    response = client.post("/user/register", payload, format="json")
+    data = response.json()
+    assert response.status_code == 400
+    assert data["error"].startswith("Product with given ID")
+    
+pytest.mark.django_db
+def test_register_user_invalid_json(client):
+    """Test that sending invalid JSON triggers JSONDecodeError."""
+    response = client.post("/user/register", data="invalid_json_string", content_type="application/json")
+
+    assert response.status_code == 400
+    assert response.json() == {"error": "Invalid JSON format."}
     
 @pytest.mark.django_db
 def test_get_all_users(client, user_fixture):
@@ -92,6 +154,14 @@ def test_get_user(client, user_fixture):
     assert data["user"]["last_name"] == "Doe"
     
 @pytest.mark.django_db
+def test_get_user_fail(client):
+    response = client.get(f"/user/100", format="json")
+    data = response.json()
+
+    assert response.status_code == 404
+    assert data["error"] == "User not found."
+    
+@pytest.mark.django_db
 def test_get_users_by_product(client, user_fixture, product_fixture):
     response = client.get(f"/user/product/{product_fixture.id}", format="json")
     data = response.json()
@@ -114,5 +184,54 @@ def test_get_users_by_product_no_users(client):
     assert "error" in data
     assert data["error"] == f"No users found for product ID {non_existent_product_id}"
 
+@pytest.mark.django_db
+def test_login_user_invalid_json(client):
+    """Test that sending invalid JSON triggers JSONDecodeError."""
+    response = client.post("/user/login", data="invalid_json_string", content_type="application/json")
 
+    assert response.status_code == 400
+    assert response.json() == {"error": "Invalid JSON format."}
     
+@pytest.mark.parametrize("day, expected_suffix", [
+    (1, "st"),
+    (2, "nd"),
+    (3, "rd"),
+    (4, "th"),
+    (11, "th"),
+    (12, "th"),
+    (13, "th"),
+    (21, "st"),
+    (22, "nd"),
+    (23, "rd"),
+    (31, "st"),
+])
+def test_get_ordinal_suffix(day, expected_suffix):
+    """Test ordinal suffix logic."""
+    date_obj = datetime(2025, 3, day)  # Use March as a placeholder month
+    formatted_date = format_date_with_suffix(date_obj)
+    assert formatted_date.startswith(f"{day}{expected_suffix} "), f"Failed for day {day}"
+
+@pytest.mark.parametrize("month, expected_month", [
+    (1, "Jan"),
+    (2, "Feb"),
+    (3, "Mar"),
+    (4, "Apr"),
+    (5, "May"),
+    (6, "Jun"),
+    (7, "Jul"),
+    (8, "Aug"),
+    (9, "Sep"),
+    (10, "Oct"),
+    (11, "Nov"),
+    (12, "Dec"),
+])
+def test_format_date_months(month, expected_month):
+    """Test correct month formatting."""
+    date_obj = datetime(2025, month, 10)  # Keep the day fixed
+    formatted_date = format_date_with_suffix(date_obj)
+    assert formatted_date.endswith(expected_month), f"Failed for month {month}"
+
+def test_format_date_complete():
+    """Test full formatted date output."""
+    date_obj = datetime(2025, 3, 21)
+    assert format_date_with_suffix(date_obj) == "21st Mar"

@@ -52,3 +52,10 @@ def test_get_all_products(client, product_fixture):
     assert "products" in data
     assert len(data["products"]) > 0
     
+@pytest.mark.django_db
+def test_register_product_invalid_json(client):
+    """Test that sending invalid JSON triggers JSONDecodeError."""
+    response = client.post("/product/register", data="invalid_json_string", content_type="application/json")
+
+    assert response.status_code == 400
+    assert response.json() == {"error": "Invalid JSON format."}
