@@ -17,7 +17,7 @@ load_dotenv()
 class AIAssistant:
     def __init__(self, user: User):
         self.api_key = os.getenv('MISTRAL_API_KEY')
-        self.model_name = "mistral-large-latest"
+        self.model_name = "mistral-tiny"
         self.client = Mistral(api_key=self.api_key)
         greeting = "Ms." if user.gender == "female" else "Mr."
         fitness_desc = self.getPersonaDescription(user.fitness_goal)
@@ -106,15 +106,25 @@ def get_ai_feedback(request, user_id):
         return JsonResponse({"error": "Internal server error"}, status=500)
 
 @huey.task()
-def task_ai_feedback(user_id):
+def task_ai_feedback(user_id, top_sessions=7):
     try:
         # Fetch user and session data
         user = User.objects.get(id=user_id)
-        user_sessions = ExerciseSession.objects.filter(user_id=user_id).values('exercise_type', 'duration', 'reps', 'errors', 'created_at')
+        user_sessions = ExerciseSession.objects.filter(user_id=user_id) \
+            .order_by('-created_at')[:top_sessions] \
+            .values('exercise_type', 'duration', 'reps', 'errors', 'created_at')
 
         if not user_sessions:
             print(f"No sessions found for user {user_id}")
-            return
+            # Generate default output
+            return {
+                "summary_advice": "No exercise session performed yet.",
+                "summary_analysis": "No data available to analyze workout trends or performance.",
+                "future_advice": "Start logging your exercise sessions to receive personalized feedback and advice.",
+                "form_score": 0,
+                "stability_score": 0,
+                "range_of_motion_score": 0
+            }
 
         print(f"Generating feedback for user {user_id}...")
         ai_assistant = SingletonAIAssistant.get_instance(user)
