@@ -2,5 +2,3 @@
 omit =
     FITTR_API/asgi.py
     FITTR_API/wsgi.py
-    FITTR_API/routing.py
-    FITTR_API/ai_utils/ai_assistant.py
