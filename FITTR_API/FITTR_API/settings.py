@@ -147,7 +147,7 @@ HUEY = {
     'blocking': True,
     'connection': {'connection_pool': pool},  # Use Redis connection pooling
     'consumer': {
-        'workers': 2,  # Increase if necessary
+        'workers': 6,  # Increase if necessary
         'worker_type': 'thread',
         'initial_delay': 0.1,
         'backoff': 1.15,

@@ -10,6 +10,7 @@ class Product(models.Model):
     service_uuid = models.CharField(max_length=50,default="12345678-1234-1234-1234-123456789abc")
     # starts or stops the exercise
     exercise_initialize_uuid = models.CharField(max_length=50,default="12345678-1234-1234-1234-123456789abc")
+    heartbeat_uuid = models.CharField(max_length=50,default="e429a327-c1a4-4a25-956e-f3d632bdd63a")
 
 
 class User(models.Model):
@@ -49,25 +50,6 @@ class User(models.Model):
         else:
             bmr = 0  # Default to 0 if gender is not specified correctly
         return bmr
-    def get_bmi_description(self):
-        bmi = self.get_bmi()
-        if bmi < 18.5:
-            return f"Underweight (BMI: {bmi:.2f})"
-        elif 18.5 <= bmi < 22.9:
-            return f"Normal weight (BMI: {bmi:.2f})"
-        elif 23 <= bmi < 27.4:
-            return f"Overweight (BMI: {bmi:.2f})"
-        else:
-            return f"Obese (BMI: {bmi:.2f})"
-    def get_bmr_description(self):
-        bmr = self.get_bmr()
-        if bmr == 0: return "Undefined bmr. Do not use bmr value as context"
-        if bmr < 1200:
-            return f"Below optimal BMR (BMR: {bmr:.2f})"
-        elif 1200 <= bmr < 1800:
-            return f"Optimal BMR (BMR: {bmr:.2f})"
-        else:
-            return f"Above optimal BMR (BMR: {bmr:.2f})"
     class Meta:
         app_label = 'FITTR_API'
 
