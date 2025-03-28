@@ -13,6 +13,7 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
         self.calibration_min = {}
         self.calibration_max = {}
         self.exercise_data = pd.DataFrame()
+        self.test_data = pd.DataFrame()
         self.rep_count = 0
         self.is_calibrated = False
         self.start_time = None
@@ -38,6 +39,7 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
         """
         try:
             self.exercise_data.to_csv("testing_file.csv",index=False) # For visualisation purposes
+            self.test_data.to_csv("testing_front_camera.csv",index=False) # For visualisation purposes
             self.duration = (timezone.now()-self.start_time).total_seconds()
             if(self.rep_count >= 1): # makes sense to only save the session if at least a rep was performed
                 user_instance = await self.get_user_instance()
@@ -70,7 +72,12 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
         if not landmark_data.empty:
             landmark_data = landmark_data[0]
             # filter out all the columns that are not required for this particular exercise
-            current_record:pd.Series = self.filter_function(process_raw_record(landmark_data))
+            processed_record = process_raw_record(landmark_data)
+            if self.test_data.empty:
+                self.test_data = pd.DataFrame(columns=processed_record.index)
+                assert len(self.test_data.columns) == len(landmark_labels), f"Columns do not match. {self.test_data.columns} vs {landmark_labels}"
+            self.test_data = pd.concat([self.test_data, processed_record.to_frame().T], ignore_index=True)
+            current_record:pd.Series = self.filter_function(processed_record)
             past_record = self.exercise_data.iloc[-1] if not self.exercise_data.empty else None
             if self.exercise_data.empty:
                 self.exercise_data = pd.DataFrame(columns=current_record.index)
@@ -94,6 +101,8 @@ class ExerciseSessionConsumer(AsyncWebsocketConsumer):
                 right_index = pd.Series(current_record["RIGHT_INDEX"][1],index=["RIGHT_INDEX"])
                 right_index = ema_smoothing(right_index,past_record,alpha=0.5)
                 self.add_exercise_point(right_index,past_record)
+            else: # Exercise Type UNKNOWN
+                pass
             await self.send(json.dumps({"rep_count": self.rep_count}))
 
     def add_exercise_point(self, current_record:pd.Series,past_record:pd.Series|None):

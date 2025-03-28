@@ -180,13 +180,13 @@ def task_ai_feedback(user_id, top_sessions=7):
         prompt = (
             "You are a personal trainer analyzing a user's workout history. Based on the following session data, "
             "provide a JSON response with these fields: \n"
-            "- summary_advice: A concise summary of the user's workout performance and key takeaways.\n"
+            "- summary_advice: A concise summary of the user's workout performance and key takeaways. The summary advice should not be more than 30 words.\n"
             "- summary_analysis: An analysis of workout trends, improvements, and areas needing attention.\n"
-            "- future_advice: Specific and actionable advice for improving future workouts.\n"
+            "- future_advice: Specific and actionable advice for improving future workouts. Future advice should not be more than 50 words.\n"
             "- form_score: An integer between 1-100 representing the user's form score.\n"
             "- stability_score: An integer between 1-100 representing the user's stability score.\n"
             "- range_of_motion_score: An integer between 1-100 representing the user's range of motion score.\n"
-            "Return a valid JSON response.\n"
+            "Return a valid JSON response. Ensure that none of the integer fields are set to null!\n"
             f"Here is the session data:\n{context}"
         )
         

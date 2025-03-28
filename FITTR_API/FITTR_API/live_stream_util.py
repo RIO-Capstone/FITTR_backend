@@ -205,7 +205,8 @@ def exercise_to_filter_map(exercise_type:str)->Callable:
     elif exercise_type == ExerciseType.RIGHT_BICEP_CURLS:
         return get_right_bicep_curl_joints
     else:
-        return
+        def dummy(record:pd.Series): pass
+        return dummy
     
 def get_relevant_squat_joints(record: pd.Series) -> pd.Series:
     """
@@ -214,9 +215,11 @@ def get_relevant_squat_joints(record: pd.Series) -> pd.Series:
     return record[["LEFT_HIP", "LEFT_KNEE", "LEFT_ANKLE","RIGHT_HIP", "RIGHT_KNEE", "RIGHT_ANKLE"]]
 
 def get_left_bicep_curl_joints(record:pd.Series) -> pd.Series:
-    return record[["LEFT_INDEX"]]
+    result = record[["RIGHT_INDEX"]]
+    return result.rename({"RIGHT_INDEX":"LEFT_INDEX"})
 def get_right_bicep_curl_joints(record:pd.Series) -> pd.Series:
-    return record[["RIGHT_INDEX"]]
+    result = record[["LEFT_INDEX"]]
+    return result.rename({"LEFT_INDEX":"RIGHT_INDEX"})
 
 def ema_smoothing(current_record:pd.Series,past_record:pd.Series,alpha=0.5)->pd.Series:
     if past_record is None or past_record.empty:
