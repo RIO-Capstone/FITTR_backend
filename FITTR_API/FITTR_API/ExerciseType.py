@@ -9,8 +9,8 @@ class ExerciseType:
     
     LEFT_BICEP_CURLS = "LEFT_BICEP_CURLS"
 
-    LEFT_BICEP_CURLS_THRESHOLD = 0.5 # scaled coordinate threshold
+    LEFT_BICEP_CURLS_THRESHOLD = 0.7 # scaled coordinate threshold
 
     RIGHT_BICEP_CURLS = "RIGHT_BICEP_CURLS"
 
-    RIGHT_BICEP_CURLS_THRESHOLD = 0.5 # scaled coordinate threshold
+    RIGHT_BICEP_CURLS_THRESHOLD = 0.7 # scaled coordinate threshold

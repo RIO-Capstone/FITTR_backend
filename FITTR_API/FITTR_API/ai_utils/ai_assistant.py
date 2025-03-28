@@ -21,16 +21,11 @@ class AIAssistant:
         self.client = Mistral(api_key=self.api_key)
         greeting = "Ms." if user.gender == "female" else "Mr."
         fitness_desc = self.getPersonaDescription(user.fitness_goal)
-        self.bmr_description = user.get_bmr_description()
-        self.bmi_description = user.get_bmi_description()
-
-
         self.history = [{"role": "system", 
                         "content": 
                         f"You are a personal fitness assistant for {greeting} {user.first_name}. {user.first_name} \
                         is {user.get_age()} years old and has the fitness goal of {fitness_desc}. \
                         {user.first_name} has a weight of {user.weight} kg and height of {user.height} meters. \
-                        In terms of BMI, {user.first_name} is {self.bmi_description} and in terms of BMR {user.first_name} has {self.bmr_description} \
                         Use the information about {user.first_name} to provide fitness advice. "}]
         
         self.squatMET = 5.5
