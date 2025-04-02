@@ -172,7 +172,8 @@ def get_feedback_on_latest_exercise_session(request):
             "duration",
             "errors",
             "created_at", # should be the same format as the Exercise Session object created in the web socket connection
-            "exercise_type"
+            "exercise_type",
+            "average_weight"
         ]
         for field in required_fields:
             if field not in session_data:
