@@ -33,7 +33,7 @@ Before running migrations, make sure you are inside the project directory.
 ## 🛠 Querying the SQLite Database in CMD
 To interact with the SQLite database directly:
 
-1. Navigate to the `FITTR_API` directory (where `db.sqlite3` is located).
+1. Navigate to the `FITTR_API` directory (where `db.sqlite3` is located). 
 2. Start an SQLite session:
    ```sh
    sqlite3 db.sqlite3
