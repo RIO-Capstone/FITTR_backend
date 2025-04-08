@@ -21,15 +21,44 @@ class AIAssistant:
         self.client = Mistral(api_key=self.api_key)
         greeting = "Ms." if user.gender == "female" else "Mr."
         fitness_desc = self.getPersonaDescription(user.fitness_goal)
-        bmr_description = user.get_bmr_description()
-        bmi_description = user.get_bmi_description()
+        self.bmr_description = user.get_bmr_description()
+        self.bmi_description = user.get_bmi_description()
+
+
         self.history = [{"role": "system", 
                         "content": 
                         f"You are a personal fitness assistant for {greeting} {user.first_name}. {user.first_name} \
                         is {user.get_age()} years old and has the fitness goal of {fitness_desc}. \
                         {user.first_name} has a weight of {user.weight} kg and height of {user.height} meters. \
-                        In terms of BMI, {user.first_name} is {bmi_description} and in terms of BMR {user.first_name} has {bmr_description} \
+                        In terms of BMI, {user.first_name} is {self.bmi_description} and in terms of BMR {user.first_name} has {self.bmr_description} \
                         Use the information about {user.first_name} to provide fitness advice. "}]
+        
+        self.squatMET = 5.5
+        self.bicepCurlMET = 3.8
+        
+        
+        self.userWeight = user.weight
+        self.userHeight = user.height
+        self.userAge = user.get_age()
+        self.userBMR = user.get_bmr()
+
+    def calculate_calories_burned(self, exercise_type: str, exercise_reps) -> float:
+        """
+        Calculate calories burned based on exercise type and reps.
+        """
+        MET = 0
+        if exercise_type == "RIGHT_BICEP_CURLS" or exercise_type == "LEFT_BICEP_CURLS":
+            MET = self.squatMET
+        elif exercise_type == "Bicep Curl":
+            MET = self.bicepCurlMET
+        else:
+            return 0.0
+        
+        duration_hours = (exercise_reps * 2.5) / 3600
+        calories_burnt =  (MET * self.userBMR/24)*duration_hours
+
+        return calories_burnt
+
 
     def populate_context(self, data:List[ExerciseSession]) -> str:
         """
@@ -113,6 +142,16 @@ def task_ai_feedback(user_id, top_sessions=7):
         user_sessions = ExerciseSession.objects.filter(user_id=user_id) \
             .order_by('-created_at')[:top_sessions] \
             .values('exercise_type', 'duration', 'reps', 'errors', 'created_at')
+        
+
+        for session in user_sessions:
+            print("Execise Type:",session["exercise_type"],"  Date:",session["created_at"])
+
+        latest_exercise_type = user_sessions[0]["exercise_type"]
+        latest_reps = user_sessions[0]["reps"]
+
+
+
 
         if not user_sessions:
             print(f"No sessions found for user {user_id}")
@@ -123,7 +162,8 @@ def task_ai_feedback(user_id, top_sessions=7):
                 "future_advice": "Start logging your exercise sessions to receive personalized feedback and advice.",
                 "form_score": 0,
                 "stability_score": 0,
-                "range_of_motion_score": 0
+                "range_of_motion_score": 0,
+                "calories_burnt": 0
             }
 
         print(f"Generating feedback for user {user_id}...")
@@ -152,6 +192,11 @@ def task_ai_feedback(user_id, top_sessions=7):
         
         feedback_str = ai_assistant.ai_reply_json(prompt, desired_output_format)
         feedback_json = json.loads(feedback_str)
+
+        calories_burnt = ai_assistant.calculate_calories_burned(latest_exercise_type, latest_reps)
+        feedback_json["calories_burnt"] = round(calories_burnt, 2)
+
+
         # You can log the feedback to the database or notify the user
         print(f"Queue Task complete for user {user_id} for dashboard feedback")
         return feedback_json
