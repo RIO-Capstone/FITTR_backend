@@ -10,7 +10,7 @@ class Product(models.Model):
     service_uuid = models.CharField(max_length=50,default="12345678-1234-1234-1234-123456789abc")
     # starts or stops the exercise
     exercise_initialize_uuid = models.CharField(max_length=50,default="12345678-1234-1234-1234-123456789abc")
-
+    heartbeat_uuid = models.CharField(max_length=50,default="e429a327-c1a4-4a25-956e-f3d632bdd63a")
 
 class User(models.Model):
     first_name = models.CharField(max_length=50)
